@@ -70,7 +70,7 @@ body { margin: 0; min-height: 100vh; background: var(--base); color: var(--ink);
 .statusblur { position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); z-index: 20; pointer-events: none; background: var(--status-tint); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
 .blobs { position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background: radial-gradient(340px 340px at 5% 4%, var(--b1), transparent 70%), radial-gradient(320px 320px at 105% 45%, var(--b2), transparent 70%), radial-gradient(300px 300px at 15% 92%, var(--b3), transparent 70%); }
-.wrap { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 16px calc(120px + env(safe-area-inset-bottom)); display: grid; gap: 14px; }
+.wrap { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom)); display: grid; gap: 14px; }
 h1, h2, h3 { margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
 h1 { font-size: 34px; font-weight: 800; line-height: 1.1; }
 h2 { font-size: 22px; font-weight: 800; }
@@ -88,7 +88,7 @@ p { margin: 0; }
 .banner { border-radius: 18px; padding: 12px 14px; background: var(--warn-bg); color: var(--ink); font-size: 14px; border: 1px solid rgba(180,83,9,0.25); }
 
 /* Fanelinje */
-.tabbar { position: fixed; z-index: 10; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom)); width: min(528px, calc(100% - 28px)); display: flex; gap: 2px; padding: 5px; border-radius: 30px; }
+.tabbar { position: fixed; z-index: 10; left: 50%; transform: translateX(-50%); bottom: max(10px, calc(env(safe-area-inset-bottom) - 14px)); width: min(528px, calc(100% - 28px)); display: flex; gap: 2px; padding: 5px; border-radius: 30px; }
 .tabbar button { all: unset; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 6px; border-radius: 22px; color: var(--tab-off); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .tabbar button span { font-size: 10px; font-weight: 600; }
 .tabbar button[aria-selected="true"] { background: var(--tab-on); color: var(--accent); box-shadow: 0 1px 6px rgba(23,32,43,0.12); }
@@ -206,7 +206,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 
 <!-- LOGG -->
 <section class="panel" id="tab-logg" aria-labelledby="h-logg" hidden>
-  <header><h1 id="h-logg">Logg økt</h1><p class="sub">Skriv sett som vekt × reps, for eksempel 45x6, 45x6, 45x5</p></header>
+  <header><h1 id="h-logg">Logg økt</h1><p class="sub" id="logg-sub">Skriv sett som vekt × reps, for eksempel 45x6, 45x6, 45x5</p></header>
   <form id="log-form" class="panel" novalidate>
     <div class="card glass">
       <div class="row2">
@@ -218,6 +218,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <div class="card glass"><div id="ex-fields" class="ex-fields"></div></div>
     <div class="card glass"><label for="f-note">Notat<textarea id="f-note" placeholder="Hvordan føltes økta? Byttet du utstyr eller øvelser?"></textarea></label></div>
     <button type="submit" class="btn" id="f-save">Lagre økt</button>
+    <button type="button" class="btn-soft" id="f-cancel" hidden>Avbryt redigering</button>
     <p class="status" id="f-status" role="status" style="text-align:center"></p>
     <p class="small" id="f-hint" style="text-align:center"></p>
   </form>
@@ -620,6 +621,16 @@ function renderFields() {
     if (old[navn]) inp.value = old[navn];
     lab.appendChild(inp); exBox.appendChild(lab);
   });
+  /* Øvelser i en økt som redigeres, men som ikke lenger står i programmet */
+  const planNames = planOf(key).ovelser.map((o) => o[0]);
+  editExtra.filter((n) => !planNames.includes(n)).forEach((navn, i) => {
+    const id = "ex-x-" + i, lab = el("label"); lab.setAttribute("for", id);
+    lab.appendChild(document.createTextNode(navn));
+    lab.appendChild(el("span", "lastx", "Ikke i programmet lenger. Tøm feltet for å fjerne den."));
+    const inp = el("input"); inp.type = "text"; inp.id = id; inp.dataset.navn = navn; inp.autocomplete = "off";
+    if (old[navn]) inp.value = old[navn];
+    lab.appendChild(inp); exBox.appendChild(lab);
+  });
 }
 function renderAnnet() {
   exBox.textContent = "";
@@ -663,7 +674,39 @@ fDate.value = todayISO();
 fOkt.value = defaultKey(fDate.value);
 if (fOkt.value === "annet" && weekIdx(new Date()) === 0) annetTittel = "Performance Strength";
 fDate.addEventListener("change", () => { if (!oktTouched && fDate.value) { fOkt.value = defaultKey(fDate.value); exBox.textContent = ""; renderFields(); } });
-fOkt.addEventListener("change", () => { oktTouched = true; exBox.textContent = ""; renderFields(); });
+fOkt.addEventListener("change", () => { oktTouched = true; editExtra = []; exBox.textContent = ""; renderFields(); });
+
+/* ---------- Redigering ---------- */
+let editingId = null, editExtra = [];
+function setEditMode(on) {
+  $("h-logg").textContent = on ? "Rediger økt" : "Logg økt";
+  $("logg-sub").textContent = on ? "Rett det som er feil og trykk «Lagre endringer»." : "Skriv sett som vekt × reps, for eksempel 45x6, 45x6, 45x5";
+  fSave.textContent = on ? "Lagre endringer" : "Lagre økt";
+  $("f-cancel").hidden = !on;
+}
+function resetForm() {
+  editingId = null; editExtra = []; oktTouched = false;
+  fDate.value = todayISO(); fOkt.value = defaultKey(fDate.value);
+  fSted.value = ""; fNote.value = ""; annetRows = [{ navn: "", sett: "" }];
+  annetTittel = (fOkt.value === "annet" && weekIdx(new Date()) === 0) ? "Performance Strength" : "";
+  exBox.textContent = ""; setEditMode(false); renderFields();
+}
+function startEdit(e) {
+  editingId = e.id; oktTouched = true;
+  fDate.value = e.date; fOkt.value = PLAN[e.okt] ? e.okt : "annet";
+  fSted.value = e.sted || ""; fNote.value = e.notat || "";
+  const ov = (e.ovelser || []).filter((o) => o && o.navn);
+  if (fOkt.value === "annet") {
+    annetTittel = e.tittel || "";
+    annetRows = ov.length ? ov.map((o) => ({ navn: o.navn, sett: o.sett || "" })) : [{ navn: "", sett: "" }];
+    editExtra = [];
+  } else editExtra = ov.map((o) => o.navn);
+  exBox.textContent = ""; renderFields();
+  if (fOkt.value !== "annet") exBox.querySelectorAll("input").forEach((inp) => { const o = ov.find((x) => x.navn === inp.dataset.navn); inp.value = o ? o.sett || "" : ""; });
+  setEditMode(true); say(fStatus, "");
+  goTab("logg"); window.scrollTo(0, 0);
+}
+$("f-cancel").addEventListener("click", () => { resetForm(); say(fStatus, "Redigeringen er avbrutt."); goTab("historikk"); });
 
 form.addEventListener("submit", async (ev) => {
   ev.preventDefault();
@@ -679,14 +722,24 @@ form.addEventListener("submit", async (ev) => {
   }
   const notat = fNote.value.trim().slice(0, 2000);
   if (!ovelser.length && !notat) { say(fStatus, "Fyll inn minst én øvelse eller et notat."); return; }
-  const e = { id: uid(), date: fDate.value, okt: fOkt.value, ovelser, notat, opprettet: new Date().toISOString(), iFil: false };
+  const old = editingId ? entries.find((x) => x.id === editingId) : null;
+  if (editingId && !old) { resetForm(); say(fStatus, "Fant ikke økta du redigerte. Den kan være slettet."); return; }
+  const e = { id: uid(), date: fDate.value, okt: fOkt.value, ovelser, notat, opprettet: old ? old.opprettet : new Date().toISOString(), iFil: false };
   if (isAnnet && annetTittel.trim()) e.tittel = annetTittel.trim().slice(0, 60);
   if (fSted.value.trim()) e.sted = fSted.value.trim().slice(0, 60);
   saving = true; fSave.disabled = true; say(fStatus, "Lagrer …");
   try {
     await dbPut([e]);
+    if (old) {
+      /* En endret økt lagres som en ny, og den gamle markeres som slettet i filen og på GitHub */
+      await dbDel(old.id);
+      entries = entries.filter((x) => x.id !== old.id);
+      if (old.iFil) { pendingDel.push({ id: old.id, date: old.date }); await kvSet("slettKo", pendingDel); }
+      ghDel.push({ id: old.id, tid: new Date().toISOString() }); await kvSet("ghSlett", ghDel);
+    }
     entries.push(e); sortEntries();
-    fNote.value = ""; exBox.textContent = ""; annetRows = [{ navn: "", sett: "" }]; annetTittel = ""; oktTouched = false;
+    const wasEdit = !!old;
+    resetForm();
     renderAll(); requestPersist();
     let cloud = "";
     if (ghOn()) {
@@ -694,7 +747,8 @@ form.addEventListener("submit", async (ev) => {
       try { await withTimeout(syncNow(), 7000); } catch (err) {}
       cloud = ghState.dirty ? " GitHub får den når du er på nett." : " og på GitHub";
     }
-    const where = cloud === " og på GitHub" ? "Lagret i appen og på GitHub." : "Lagret i appen." + cloud;
+    let where = cloud === " og på GitHub" ? "Lagret i appen og på GitHub." : "Lagret i appen." + cloud;
+    if (wasEdit) where = "Endringene er lagret." + (cloud === " og på GitHub" ? " GitHub er oppdatert." : cloud);
     if (settings.auto) await sendToFile(false, fStatus, where + " Åpner snarveien for å skrive til filen …");
     else say(fStatus, where);
   } catch (err) {
@@ -739,7 +793,9 @@ function renderEntries() {
       if (!del.classList.contains("confirm")) { del.classList.add("confirm"); del.textContent = "Bekreft"; setTimeout(() => { del.classList.remove("confirm"); del.textContent = "Slett"; }, 4000); return; }
       deleteEntry(e).catch(() => say(histStatus, "Kunne ikke slette økta. Prøv igjen."));
     });
-    head.appendChild(del); card.appendChild(head);
+    const ed = el("button", "btn-ghost", "Rediger"); ed.type = "button"; ed.setAttribute("aria-label", "Rediger " + entryTitle(e) + " " + fmtDate(e.date));
+    ed.addEventListener("click", () => startEdit(e));
+    head.appendChild(ed); head.appendChild(del); card.appendChild(head);
     const ov = (e.ovelser || []).filter((o) => o && o.sett && (!filter || o.navn === filter));
     if (ov.length) {
       const ul = el("ul");
@@ -762,14 +818,17 @@ async function deleteEntry(e) {
 /* ---------- Sikkerhetskopi: snarvei og fil ---------- */
 function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
 function csvLine(arr) { return arr.map(q).join(";"); }
-function flat(s) { return String(s || "").replace(/\s*\r?\n\s*/g, " / "); }
+function flat(s) { return String(s || "").replace(/\r\n?/g, "\n"); }
+/* Øvelsesbiblioteket lagres som egne linjer i filen, med Økt = BIBLIOTEK */
+function libRows(ts) { ts = ts || new Date().toISOString(); const d = ts.slice(0, 10); return lib.length ? lib.map((n) => ["BIBLIOTEK", d, "BIBLIOTEK", "", "", n, "", "", ts]) : [["BIBLIOTEK", d, "BIBLIOTEK", "", "", "", "", "", ts]]; }
+let libUnsent = false;
 function entryRows(e) {
   const ov = (e.ovelser || []).filter((o) => o && o.sett);
   const base = [e.id, e.date, planOf(e.okt).navn, e.tittel || "", e.sted || ""], note = flat(e.notat), ts = e.opprettet || "";
   if (!ov.length) return [base.concat(["", "", note, ts])];
   return ov.map((o, i) => base.concat([o.navn, o.sett, i === 0 ? note : "", ts]));
 }
-function unsentCount() { return entries.filter((e) => !e.iFil).length + pendingDel.length; }
+function unsentCount() { return entries.filter((e) => !e.iFil).length + pendingDel.length + (libUnsent ? 1 : 0); }
 function openShortcut(text) {
   location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent(settings.snarvei.trim()) + "&input=text&text=" + encodeURIComponent(text);
 }
@@ -777,16 +836,19 @@ async function sendToFile(all, statusEl, msg) {
   if (!settings.snarvei.trim()) { say(statusEl, "Skriv inn navnet på snarveien under Annet › Lagring."); return; }
   const toSend = (all ? entries.slice() : entries.filter((e) => !e.iFil)).sort((a, b) => a.date !== b.date ? (a.date < b.date ? -1 : 1) : (a.opprettet < b.opprettet ? -1 : 1));
   const dels = pendingDel.slice();
-  if (!toSend.length && !dels.length) { say(statusEl, "Alt er allerede sendt til filen."); return; }
+  const withLib = libUnsent || all;
+  if (!toSend.length && !dels.length && !withLib) { say(statusEl, "Alt er allerede sendt til filen."); return; }
   if (toSend.length > 150) { say(statusEl, "Det er for mange økter til å sende på én gang. Trykk «CSV» under Eksporter, og lagre filen som Treningslogg.csv i Snarveier-mappen i iCloud Drive."); return; }
   const lines = [];
   if (!headerSent) lines.push(csvLine(CSV_HEAD));
   toSend.forEach((e) => entryRows(e).forEach((r) => lines.push(csvLine(r))));
   const now = new Date().toISOString();
   dels.forEach((d) => lines.push(csvLine([d.id, d.date, "SLETTET", "", "", "", "", "", now])));
+  if (withLib) libRows(now).forEach((r) => lines.push(csvLine(r)));
   toSend.forEach((e) => { e.iFil = true; });
   await dbPut(toSend);
   pendingDel = []; await kvSet("slettKo", []);
+  if (withLib) { libUnsent = false; await kvSet("bibUsendt", false); }
   headerSent = true; await kvSet("header", true);
   lastSent = now; await kvSet("sistSendt", now);
   renderBackup();
@@ -888,6 +950,7 @@ async function shareFile(blob, filename, type, statusEl) {
 function allRowsAsc() {
   const rows = [];
   entries.slice().sort((a, b) => a.date !== b.date ? (a.date < b.date ? -1 : 1) : (a.opprettet < b.opprettet ? -1 : 1)).forEach((e) => entryRows(e).forEach((r) => rows.push(r)));
+  libRows().forEach((r) => rows.push(r));
   return rows;
 }
 async function exportXlsx(statusEl) {
@@ -994,12 +1057,14 @@ async function importRows(rows) {
   const col = {}; rows[hi].forEach((c, i) => { const k = String(c).trim().toLowerCase(); if (!(k in col)) col[k] = i; });
   const get = (r, k) => (k in col && r[col[k]] != null) ? String(r[col[k]]).trim() : "";
   const hasId = "id" in col;
-  const groups = new Map(), deleted = new Set(); let prevKey = null, n = 0;
+  if (hasId && !headerSent) { headerSent = true; await kvSet("header", true); }
+  const groups = new Map(), deleted = new Set(), libSnaps = {}; let prevKey = null, n = 0;
   rows.slice(hi + 1).forEach((r) => {
     if (!r || !r.length) return;
     const id = get(r, "id"), oktName = get(r, "økt");
     if (id.startsWith("#")) return;
     if (get(r, "dato").toLowerCase() === "dato") return;
+    if (oktName === "BIBLIOTEK") { const ts = get(r, "lagret"); if (!libSnaps[ts]) libSnaps[ts] = []; const n = get(r, "øvelse"); if (n) libSnaps[ts].push(n); return; }
     if (oktName === "SLETTET") { if (id) deleted.add(id); return; }
     const date = normDate(get(r, "dato")); if (!date) return;
     let key;
@@ -1026,12 +1091,25 @@ async function importRows(rows) {
     if (haveIds.has(e.id) || haveSig.has(sig) || (!e.ovelser.length && !e.notat)) { skipped++; return; }
     haveIds.add(e.id); haveSig.add(sig); fresh.push(e);
   });
+  /* Øvelsesbiblioteket: nyeste versjon i filen, lagt sammen med det som allerede er i appen */
+  let libAdded = 0;
+  const snapKeys = Object.keys(libSnaps).sort();
+  if (snapKeys.length) {
+    const latest = libSnaps[snapKeys[snapKeys.length - 1]], lower = lib.map((x) => x.toLowerCase());
+    const add = latest.filter((x, i) => latest.indexOf(x) === i && !lower.includes(x.toLowerCase()));
+    if (add.length) {
+      lib = lib.concat(add).sort((a, b) => a.localeCompare(b, "nb")); libAdded = add.length;
+      await kvSet("bibliotek", lib); libChanged = new Date().toISOString(); await kvSet("bibliotekEndret", libChanged);
+      renderLib(); if (fOkt.value === "annet") renderAnnet();
+    }
+  }
+  const libMsg = libAdded ? " " + plural(libAdded, "øvelse", "øvelser") + " lagt til i biblioteket." : "";
   if (fresh.length) {
     await dbPut(fresh); entries = entries.concat(fresh); sortEntries(); renderAll(); requestPersist();
     if (ghOn()) { await markDirty(); syncNow().catch(() => {}); }
   }
-  if (!fresh.length) return groups.size ? "Ingen nye økter. Alle " + plural(skipped, "økt", "økter") + " i filen finnes allerede i appen." : "Fant ingen økter i filen.";
-  return "La inn " + plural(fresh.length, "økt", "økter") + "." + (skipped ? " " + plural(skipped, "økt", "økter") + " fantes fra før." : "");
+  if (!fresh.length) return (groups.size ? "Ingen nye økter. Alle " + plural(skipped, "økt", "økter") + " i filen finnes allerede i appen." : "Fant ingen økter i filen.") + libMsg;
+  return "La inn " + plural(fresh.length, "økt", "økter") + "." + (skipped ? " " + plural(skipped, "økt", "økter") + " fantes fra før." : "") + libMsg;
 }
 
 /* ---------- Bibliotek ---------- */
@@ -1057,6 +1135,7 @@ function renderLib() {
 async function writeLib(next, msg) {
   try {
     await kvSet("bibliotek", next); lib = next; libChanged = new Date().toISOString(); await kvSet("bibliotekEndret", libChanged);
+    libUnsent = true; await kvSet("bibUsendt", true); renderBackup();
     renderLib(); if (fOkt.value === "annet") renderAnnet(); say(libStatus, msg);
     if (ghOn()) { await markDirty(); syncNow().catch(() => {}); }
   }
@@ -1256,8 +1335,8 @@ fSave.disabled = true;
 (async () => {
   try {
     idb = await openDb();
-    const [all, l, d, h, s, gd, gs, gx, le] = await Promise.all([dbAll(), kvGet("bibliotek"), kvGet("slettKo"), kvGet("header"), kvGet("sistSendt"), kvGet("ghDirty"), kvGet("ghSist"), kvGet("ghSlett"), kvGet("bibliotekEndret")]);
-    ghState.dirty = !!gd; ghState.last = gs || ""; ghDel = Array.isArray(gx) ? gx : []; libChanged = le || "";
+    const [all, l, d, h, s, gd, gs, gx, le, bu] = await Promise.all([dbAll(), kvGet("bibliotek"), kvGet("slettKo"), kvGet("header"), kvGet("sistSendt"), kvGet("ghDirty"), kvGet("ghSist"), kvGet("ghSlett"), kvGet("bibliotekEndret"), kvGet("bibUsendt")]);
+    ghState.dirty = !!gd; ghState.last = gs || ""; ghDel = Array.isArray(gx) ? gx : []; libChanged = le || ""; libUnsent = !!bu;
     entries = Array.isArray(all) ? all : []; sortEntries();
     lib = Array.isArray(l) ? l.filter((x) => typeof x === "string" && x) : [];
     pendingDel = Array.isArray(d) ? d : []; headerSent = !!h; lastSent = s || "";
