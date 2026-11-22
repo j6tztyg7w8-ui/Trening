@@ -545,6 +545,7 @@ function showTab(name) {
   document.querySelectorAll(".tabbar button").forEach((b) => b.setAttribute("aria-selected", b.dataset.go === name ? "true" : "false"));
   if (current !== name) window.scrollTo(0, scrollPos[name] || 0);
   current = name;
+  try { localStorage.setItem("tl-fane", name); } catch (e) {}
 }
 document.querySelectorAll(".tabbar button").forEach((b) => b.addEventListener("click", () => {
   if (b.dataset.go === current) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
@@ -979,7 +980,7 @@ let pendingPaste = false;
 function startFetch(statusEl) {
   const name = (settings.hent || "").trim();
   if (!name) { say(statusEl, "Skriv inn navnet på hente-snarveien under Annet › Lagring."); return; }
-  pendingPaste = true;
+  pendingPaste = Date.now();
   say(statusEl, "Åpner snarveien. Når den er ferdig, trykker du tilbake-pilen øverst til venstre og så «Lim inn».");
   location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent(name);
 }
@@ -997,6 +998,10 @@ $("imp-fetch").addEventListener("click", () => startFetch($("imp-status")));
 $("imp-paste").addEventListener("click", () => pasteImport($("imp-status")));
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && pendingPaste) {
+    /* Bare én gang, og bare rett etter at hente-snarveien ble åpnet */
+    const fresh = Date.now() - pendingPaste < 5 * 60 * 1000;
+    pendingPaste = false;
+    if (!fresh) return;
     goTab("annet"); $("seg-lag").click();
     setTimeout(() => { $("restore-card").scrollIntoView({ block: "center" }); $("imp-paste").focus(); }, 80);
     say($("imp-status"), "Trykk «Lim inn» for å hente loggen inn i appen.");
@@ -1154,7 +1159,9 @@ $("lib-form").addEventListener("submit", (ev) => { ev.preventDefault(); addToLib
 const SEGS = [["seg-lag", "sub-lag"], ["seg-kost", "sub-kost"], ["seg-forkl", "sub-forkl"]];
 SEGS.forEach((s) => $(s[0]).addEventListener("click", () => {
   SEGS.forEach((t) => { const on = t[0] === s[0]; $(t[0]).setAttribute("aria-selected", on ? "true" : "false"); $(t[1]).hidden = !on; });
+  try { localStorage.setItem("tl-seg", s[0]); } catch (e) {}
 }));
+try { const sg = localStorage.getItem("tl-seg"); if (sg && $(sg) && sg !== "seg-lag") $(sg).click(); } catch (e) {}
 const sName = $("s-name"), sAuto = $("s-auto");
 sName.value = settings.snarvei; sAuto.checked = settings.auto;
 sName.addEventListener("input", () => { settings.snarvei = sName.value; saveSettings(); });
@@ -1328,7 +1335,9 @@ function renderAll() { renderProgram(); renderTiles(); renderFilter(); renderEnt
 
 const standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
 $("safari-banner").hidden = standalone;
-showTab(location.hash.slice(1));
+let startTab = location.hash.slice(1);
+if (!startTab) { try { startTab = localStorage.getItem("tl-fane") || ""; } catch (e) {} if (startTab) history.replaceState(null, "", "#" + startTab); }
+showTab(startTab);
 renderProgram(); renderFields(); renderLib(); renderHint();
 fSave.disabled = true;
 

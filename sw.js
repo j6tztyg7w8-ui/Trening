@@ -1,5 +1,5 @@
 /* Gjør at appen åpner uten nett. Henter alltid nyeste versjon når du er på nett. */
-const CACHE = "treningslogg-v6";
+const CACHE = "treningslogg-v7";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon.png"];
 
 self.addEventListener("install", (e) => {
