@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Treningslogg">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#e8edf3">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Treningslogg</title>
+<style>
+/* =====================================================================
+   UTSEENDE – ENDRE HER
+   Farger, skrift og avstander for hele appen. Bytt en fargekode
+   (f.eks. #c2410c) og last opp filen på nytt.
+   ===================================================================== */
+:root {
+  --base: #e8edf3;          /* bakgrunn */
+  --ink: #111827;           /* hovedtekst */
+  --muted: #4b5563;         /* grå hjelpetekst */
+  --accent: #c2410c;        /* knapper og markeringer */
+  --on-accent: #ffffff;     /* tekst på knapper */
+  --ok: #15803d;            /* grønn status */
+  --ok-bg: #dcfce7;
+  --warn: #b45309;          /* gul/oransje status */
+  --warn-bg: #fef3c7;
+  --danger: #b91c1c;        /* slett-knapp */
+  /* fargen på hver økttype */
+  --push: #c2410c; --pull: #2563eb; --legs: #15803d; --cardio: #7c3aed; --other: #0f766e; --rest: #6b7280;
+  /* fargeflekkene i bakgrunnen */
+  --b1: rgba(255,176,122,0.55); --b2: rgba(141,184,255,0.55); --b3: rgba(155,227,180,0.45);
+  /* glasskortene */
+  --glass: rgba(255,255,255,0.60);
+  --glass-border: rgba(255,255,255,0.80);
+  --glass-shadow: 0 10px 30px rgba(23,32,43,0.10), inset 0 1px 0 rgba(255,255,255,0.9);
+  --field: rgba(255,255,255,0.75);
+  --field-border: rgba(17,24,39,0.12);
+  --line: rgba(17,24,39,0.08);
+  --chip: rgba(255,255,255,0.75);
+  --tab-on: rgba(255,255,255,0.85);
+  --tab-off: #3f4a56;
+  --font: -apple-system, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+  --radius: 22px;           /* hvor runde kortene er */
+  color-scheme: light;
+}
+/* Mørk modus (følger telefonens innstilling) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --base: #0b0f14; --ink: #f3f4f6; --muted: #a7b0bb; --accent: #fb923c; --on-accent: #1a0d03;
+    --ok: #4ade80; --ok-bg: rgba(74,222,128,0.15); --warn: #fbbf24; --warn-bg: rgba(251,191,36,0.15); --danger: #f87171;
+    --push: #fb923c; --pull: #60a5fa; --legs: #4ade80; --cardio: #a78bfa; --other: #2dd4bf; --rest: #9ca3af;
+    --b1: rgba(255,150,90,0.22); --b2: rgba(110,160,255,0.22); --b3: rgba(110,210,150,0.16);
+    --glass: rgba(28,36,46,0.60); --glass-border: rgba(255,255,255,0.12);
+    --glass-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.10);
+    --field: rgba(255,255,255,0.07); --field-border: rgba(255,255,255,0.14); --line: rgba(255,255,255,0.10);
+    --chip: rgba(255,255,255,0.08); --tab-on: rgba(255,255,255,0.14); --tab-off: #c2c9d1;
+    color-scheme: dark;
+  }
+}
+/* ===================================================================== */
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; min-height: 100vh; background: var(--base); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.45; }
+.blobs { position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(340px 340px at 5% 4%, var(--b1), transparent 70%), radial-gradient(320px 320px at 105% 45%, var(--b2), transparent 70%), radial-gradient(300px 300px at 15% 92%, var(--b3), transparent 70%); }
+.wrap { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 16px calc(120px + env(safe-area-inset-bottom)); display: grid; gap: 14px; }
+h1, h2, h3 { margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+h1 { font-size: 34px; font-weight: 800; line-height: 1.1; }
+h2 { font-size: 22px; font-weight: 800; }
+h3 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+p { margin: 0; }
+.sub { color: var(--muted); font-size: 15px; margin-top: 2px; }
+.small { font-size: 13px; color: var(--muted); }
+.panel { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.panel[hidden], [hidden] { display: none !important; }
+.glass { background: var(--glass); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%); }
+.card { border-radius: var(--radius); padding: 14px 16px; display: grid; gap: 10px; }
+.tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c, var(--muted)); }
+.push { --c: var(--push); } .pull { --c: var(--pull); } .legs { --c: var(--legs); } .cardio { --c: var(--cardio); } .other { --c: var(--other); } .rest { --c: var(--rest); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--rest)); flex: none; }
+.banner { border-radius: 18px; padding: 12px 14px; background: var(--warn-bg); color: var(--ink); font-size: 14px; border: 1px solid rgba(180,83,9,0.25); }
+
+/* Fanelinje */
+.tabbar { position: fixed; z-index: 10; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom)); width: min(528px, calc(100% - 28px)); display: flex; gap: 2px; padding: 5px; border-radius: 30px; }
+.tabbar button { all: unset; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 6px; border-radius: 22px; color: var(--tab-off); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.tabbar button span { font-size: 10px; font-weight: 600; }
+.tabbar button[aria-selected="true"] { background: var(--tab-on); color: var(--accent); box-shadow: 0 1px 6px rgba(23,32,43,0.12); }
+.tabbar button:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+
+/* Ukestripe */
+.week { display: flex; gap: 2px; padding: 6px; border-radius: var(--radius); }
+.week button { all: unset; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; border-radius: 16px; cursor: pointer; }
+.week button .d { font-size: 11px; font-weight: 600; color: var(--muted); }
+.week button .w { font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.week button.today { background: var(--tab-on); box-shadow: 0 1px 6px rgba(23,32,43,0.12); }
+.week button:focus-visible { outline: 3px solid var(--accent); }
+
+/* Øktkort */
+details.session { border-radius: var(--radius); overflow: hidden; }
+details.session > summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
+details.session > summary::-webkit-details-marker { display: none; }
+.bar { width: 10px; height: 36px; border-radius: 6px; background: var(--c); flex: none; }
+.sum-txt { flex: 1; min-width: 0; display: grid; }
+.sum-txt strong { font-size: 17px; }
+.chev { transition: transform .2s; color: var(--muted); flex: none; }
+details[open] .chev { transform: rotate(90deg); }
+.session-body { padding: 0 16px 16px; display: grid; gap: 8px; }
+.ex-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; align-items: baseline; }
+.ex-row .sr { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ex-row .kg { color: var(--muted); white-space: nowrap; text-align: right; }
+.ex-row .last { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); }
+
+/* Skjema */
+label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); min-width: 0; }
+input, select, textarea, button { font: inherit; color: var(--ink); }
+input[type="text"], input[type="date"], select, textarea { width: 100%; min-width: 0; padding: 11px 12px; border-radius: 14px; border: 1px solid var(--field-border); background: var(--field); font-size: 16px; font-weight: 500; }
+input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-height: 46px; text-align: left; }
+select { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
+textarea { min-height: 70px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ex-fields { display: grid; gap: 12px; }
+.ex-fields label { font-size: 15px; color: var(--ink); }
+.lastx { font-size: 12px; font-weight: 500; color: var(--muted); }
+.annet-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 8px; align-items: end; padding-bottom: 12px; border-bottom: 1px dashed var(--line); }
+@media (max-width: 460px) { .annet-row { grid-template-columns: minmax(0, 1fr) auto; } .annet-row .sett { grid-column: 1 / -1; grid-row: 2; } }
+.btn { all: unset; box-sizing: border-box; text-align: center; padding: 14px 18px; border-radius: 18px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 17px; cursor: pointer; }
+.btn-soft { all: unset; box-sizing: border-box; text-align: center; padding: 11px 12px; border-radius: 14px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--field); border: 1px solid var(--field-border); }
+.btn[disabled], .btn-soft[disabled] { opacity: 0.5; cursor: not-allowed; }
+.btn-ghost { all: unset; padding: 6px 10px; border-radius: 10px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); cursor: pointer; }
+.btn-ghost.confirm { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn:focus-visible, .btn-soft:focus-visible, .btn-ghost:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.btns2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.status { font-size: 13px; color: var(--muted); }
+.status:empty { display: none; }
+.seg { display: flex; gap: 2px; padding: 3px; border-radius: 14px; background: rgba(127,127,127,0.12); }
+.seg button { all: unset; flex: 1; text-align: center; padding: 8px 0; border-radius: 12px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.seg button[aria-selected="true"] { background: var(--tab-on); color: var(--ink); box-shadow: 0 1px 6px rgba(23,32,43,0.12); }
+.toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 15px; font-weight: 500; color: var(--ink); }
+.toggle input { width: 24px; height: 24px; accent-color: var(--accent); flex: none; }
+
+/* Sikkerhetskopi-kort */
+.backup-head { display: flex; align-items: center; gap: 12px; }
+.backup-ico { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex: none; background: var(--ok-bg); color: var(--ok); }
+.backup-ico.warn { background: var(--warn-bg); color: var(--warn); }
+.backup-txt { display: grid; min-width: 0; }
+.backup-txt strong { font-size: 16px; }
+
+/* Historikk */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.tile { border-radius: 20px; padding: 12px; display: grid; gap: 2px; }
+.tile .v { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; overflow-wrap: anywhere; }
+.tile .l { font-size: 12px; color: var(--muted); }
+.filterbar { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.chips-scroll { min-width: 0; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+.chips-scroll::-webkit-scrollbar { display: none; }
+.fchip { all: unset; flex: none; padding: 7px 13px; border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--chip); border: 1px solid var(--glass-border); }
+.fchip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.entry { border-radius: var(--radius); padding: 12px 14px; display: grid; gap: 6px; }
+.entry-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.entry-head strong { flex: 1; font-size: 16px; min-width: 0; }
+.entry ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 14px; }
+.entry li span { color: var(--muted); }
+.entry .n2 { font-size: 13px; color: var(--muted); white-space: pre-line; }
+
+/* Bibliotek */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; font-size: 14px; background: var(--chip); border: 1px solid var(--glass-border); }
+.chip button { all: unset; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 0 4px; }
+.chip.suggest { all: unset; display: inline-flex; padding: 7px 12px; border-radius: 999px; font-size: 14px; cursor: pointer; border: 1px dashed var(--field-border); }
+
+/* Tekstsider */
+.ktiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.prose { display: grid; gap: 8px; }
+.prose ul, .prose ol { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+.prose p, .prose li { font-size: 15px; }
+</style>
+</head>
+<body>
+<div class="blobs" aria-hidden="true"></div>
+<main class="wrap">
+
+<p class="banner" id="safari-banner" hidden>Du har åpnet appen i Safari. Legg den til på Hjem-skjermen (Del › Legg til på Hjem-skjerm) og bruk den derfra. Safari og Hjem-skjerm-appen har hver sin lagring, så økter lagret her vises ikke der.</p>
+
+<!-- PROGRAM -->
+<section class="panel" id="tab-program" aria-labelledby="h-program">
+  <header><h1 id="h-program">Program</h1><p class="sub" id="program-sub">Fem økter i uka</p></header>
+  <nav class="week glass" id="week" aria-label="Uka"></nav>
+  <div id="sessions" class="panel"></div>
+</section>
+
+<!-- LOGG -->
+<section class="panel" id="tab-logg" aria-labelledby="h-logg" hidden>
+  <header><h1 id="h-logg">Logg økt</h1><p class="sub">Skriv sett som vekt × reps, for eksempel 45x6, 45x6, 45x5</p></header>
+  <form id="log-form" class="panel" novalidate>
+    <div class="card glass">
+      <div class="row2">
+        <label for="f-date">Dato<input type="date" id="f-date" required></label>
+        <label for="f-okt">Økt<select id="f-okt"></select></label>
+      </div>
+      <label for="f-sted">Sted (valgfritt)<input type="text" id="f-sted" maxlength="60" autocomplete="off" placeholder="f.eks. Colosseum"></label>
+    </div>
+    <div class="card glass"><div id="ex-fields" class="ex-fields"></div></div>
+    <div class="card glass"><label for="f-note">Notat<textarea id="f-note" placeholder="Hvordan føltes økta? Byttet du utstyr eller øvelser?"></textarea></label></div>
+    <button type="submit" class="btn" id="f-save">Lagre økt</button>
+    <p class="status" id="f-status" role="status" style="text-align:center"></p>
+    <p class="small" id="f-hint" style="text-align:center"></p>
+  </form>
+</section>
+
+<!-- HISTORIKK -->
+<section class="panel" id="tab-historikk" aria-labelledby="h-hist" hidden>
+  <header><h1 id="h-hist">Historikk</h1><p class="sub">Alle økter, nyeste først</p></header>
+  <div class="tiles" id="tiles"></div>
+  <div class="card glass" id="backup-hist"></div>
+  <div class="filterbar">
+    <span class="small" style="flex:none;font-weight:600">Filter</span>
+    <div class="chips-scroll" id="filter-chips" role="group" aria-label="Filtrer på øvelse"></div>
+  </div>
+  <strong id="filter-title" style="font-size:15px">Alle økter</strong>
+  <p class="status" id="hist-status" role="status"></p>
+  <div id="entries" class="panel" style="gap:10px"></div>
+</section>
+
+<!-- ØVELSER -->
+<section class="panel" id="tab-ovelser" aria-labelledby="h-lib" hidden>
+  <header><h1 id="h-lib">Øvelser</h1><p class="sub">Velges under «Annet» når du logger</p></header>
+  <form id="lib-form" class="card glass" novalidate>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <label for="lib-input" style="flex:1">Ny øvelse<input type="text" id="lib-input" maxlength="60" placeholder="f.eks. Markløft" autocomplete="off"></label>
+      <button type="submit" class="btn" style="font-size:15px;padding:12px 16px;border-radius:14px">Legg til</button>
+    </div>
+    <p class="status" id="lib-status" role="status"></p>
+  </form>
+  <div class="card glass"><span class="small" id="lib-count" style="font-weight:600">I biblioteket</span><div id="lib-list" class="chips"></div></div>
+  <div class="card glass"><span class="small" style="font-weight:600">Forslag, trykk for å legge til</span><div id="lib-suggest" class="chips"></div></div>
+</section>
+
+<!-- ANNET -->
+<section class="panel" id="tab-annet" aria-labelledby="h-annet" hidden>
+  <header><h1 id="h-annet">Annet</h1><p class="sub">Lagring, kosthold og forklaring</p></header>
+  <div class="seg" role="tablist" aria-label="Annet">
+    <button type="button" role="tab" id="seg-lag" aria-selected="true" aria-controls="sub-lag">Lagring</button>
+    <button type="button" role="tab" id="seg-kost" aria-selected="false" aria-controls="sub-kost">Kosthold</button>
+    <button type="button" role="tab" id="seg-forkl" aria-selected="false" aria-controls="sub-forkl">Forklaring</button>
+  </div>
+
+  <!-- Lagring -->
+  <div id="sub-lag" class="panel" role="tabpanel" aria-labelledby="seg-lag">
+    <div class="card glass" id="backup-lag"></div>
+
+    <div class="card glass">
+      <h3>I appen</h3>
+      <p class="small" id="app-store-info">Sjekker lagringen …</p>
+    </div>
+
+    <div class="card glass">
+      <h3>Snarvei som skriver til fil</h3>
+      <label for="s-name">Navn på snarveien<input type="text" id="s-name" autocomplete="off" value="Treningslogg"></label>
+      <label class="toggle" for="s-auto">Skriv til fil hver gang jeg lagrer<input type="checkbox" id="s-auto" checked></label>
+      <div class="btns2">
+        <button type="button" class="btn-soft" id="s-test">Test snarveien</button>
+        <button type="button" class="btn-soft" id="s-all">Send alle på nytt</button>
+      </div>
+      <p class="status" id="s-status" role="status"></p>
+    </div>
+
+    <div class="card glass">
+      <h3>Gjenopprett</h3>
+      <p class="small">Ny telefon eller tom app? Velg Treningslogg.csv, eller en Excel-fil eksportert fra den gamle appen. Økter som mangler legges inn igjen. Ingenting blir overskrevet eller slettet.</p>
+      <button type="button" class="btn" id="imp-btn">Importer fra fil</button>
+      <p class="status" id="imp-status" role="status"></p>
+    </div>
+
+    <div class="card glass">
+      <h3>Eksporter</h3>
+      <div class="btns2">
+        <button type="button" class="btn-soft" id="exp-xlsx">Excel</button>
+        <button type="button" class="btn-soft" id="exp-csv">CSV</button>
+      </div>
+      <p class="small">Excel trenger nett første gang. CSV-filen kan også erstatte Treningslogg.csv hvis den noen gang blir rotete: lagre den med samme navn i Snarveier-mappen.</p>
+      <p class="status" id="exp-status" role="status"></p>
+    </div>
+
+    <div class="card glass prose">
+      <h3>Slik setter du opp snarveien</h3>
+      <ol>
+        <li>Åpne Snarveier-appen og trykk <strong>+</strong>.</li>
+        <li>Gi snarveien navnet <strong>Treningslogg</strong>, nøyaktig som over.</li>
+        <li>Legg til handlingen <strong>Legg til i tekstfil</strong> (engelsk: Append to Text File).</li>
+        <li>Sett teksten til <strong>Snarvei-inndata</strong> (Shortcut Input), og filbanen til <strong>Treningslogg.csv</strong>. Slå på <strong>Ny linje</strong>.</li>
+        <li>Trykk <strong>Test snarveien</strong> her. Filen dukker opp i Filer › iCloud Drive › Snarveier.</li>
+      </ol>
+      <p class="small">Etter at snarveien har kjørt, trykker du på tilbake-pilen øverst til venstre for å komme tilbake til appen.</p>
+    </div>
+  </div>
+
+  <!-- Kosthold -->
+  <div id="sub-kost" class="panel" role="tabpanel" aria-labelledby="seg-kost" hidden>
+    <div class="ktiles">
+      <div class="tile glass"><span class="tag">Protein</span><span class="v">110–150 g</span><span class="l">1,6–2,2 g per kg</span></div>
+      <div class="tile glass"><span class="tag">Energi</span><span class="v">2500–2900</span><span class="l">kcal per dag</span></div>
+      <div class="tile glass"><span class="tag">Karbohydrat</span><span class="v">280–410 g</span><span class="l">4–6 g per kg</span></div>
+      <div class="tile glass"><span class="tag">Fett</span><span class="v">55–70 g</span><span class="l">0,8–1 g per kg</span></div>
+    </div>
+    <div class="card glass prose">
+      <h3>Protein er det viktigste</h3>
+      <p>Fordel det på 4–5 måltider med 25–40 g hver, og få i deg et proteinrikt måltid innen et par timer etter økta.</p>
+      <ul><li>150 g kyllingfilet: ca. 35 g</li><li>150 g laks: ca. 30 g</li><li>200 g cottage cheese: ca. 25 g</li><li>170 g skyr: ca. 19 g</li><li>3 egg: ca. 19 g</li><li>Et stort glass melk: ca. 10–12 g</li></ul>
+    </div>
+    <div class="card glass prose">
+      <h3>Hvor mye energi</h3>
+      <p>Spis rundt vedlikeholdsnivå, eller 200–300 kcal over hvis målet er mest muskler. Vei deg 3–4 morgener i uka og følg snittet. Stiger det mer enn ca. 0,5 kg i måneden, spis litt mindre.</p>
+    </div>
+    <div class="card glass prose">
+      <h3>Eksempeldag, ca. 140 g protein</h3>
+      <ul><li><strong>Frokost:</strong> 3 egg, 2 brødskiver, et glass melk</li><li><strong>Lunsj:</strong> 150 g kylling med ris og grønnsaker</li><li><strong>Mellommåltid:</strong> 170 g skyr med bær og müsli</li><li><strong>Middag:</strong> 150 g laks med poteter og salat</li><li><strong>Kveld:</strong> 200 g cottage cheese med frukt</li></ul>
+    </div>
+    <div class="card glass prose">
+      <h3>Tillegg</h3>
+      <ul><li><strong>Kreatin,</strong> 3–5 g hver dag, har best dokumentasjon for styrke. Valgfritt.</li><li><strong>Proteinpulver</strong> er praktisk, men ikke nødvendig.</li><li><strong>Vann:</strong> jevnt gjennom dagen, mer på treningsdager.</li></ul>
+      <p class="small">Beregnet for ca. 69 kg. Estimater, ikke eksakte krav.</p>
+    </div>
+  </div>
+
+  <!-- Forklaring -->
+  <div id="sub-forkl" class="panel" role="tabpanel" aria-labelledby="seg-forkl" hidden>
+    <div class="card glass prose"><h3>Push, pull og bein</h3><p>Push er øvelser der du skyver vekten fra deg: bryst, skuldre og triceps. Pull er der du drar vekten mot deg: rygg og biceps. Muskler som samarbeider trenes samme dag, og hviler mens du trener noe annet.</p></div>
+    <div class="card glass prose"><h3>To push- og to pull-dager</h3><ul><li><strong>Push A</strong> er tung med få reps og bygger styrken i benken. <strong>Push B</strong> er volum med flere reps og bygger muskelmasse.</li><li><strong>Pull A</strong> er tung roing for en tykkere rygg. <strong>Pull B</strong> er nedtrekk for en bredere rygg.</li><li>Ta benken først på Push A, mens skuldre og triceps er friske.</li></ul></div>
+    <div class="card glass prose"><h3>Uka</h3><p>Mandag er Performance Strength, som dekker bein. Hold minst én dag mellom de to push-dagene og mellom de to pull-dagene. Klarer du ikke alle øktene, slå sammen Push B og Pull B.</p></div>
+    <div class="card glass prose"><h3>Progresjon</h3><p>Bli på samme vekt til du klarer toppen av rep-spennet på alle sett. Da øker du, store øvelser med 2,5 kg. På små øvelser som curl og sidehev øker du reps først. Står du fast i tre økter, gå ned 10 % og bygg opp igjen.</p></div>
+    <div class="card glass prose"><h3>Synlige magemuskler</h3><p>Mageøvelser og Absolution bygger musklene. Om de synes, avgjøres av fettprosenten, og der gjør cardio og kosthold mest.</p></div>
+  </div>
+</section>
+</main>
+
+<input type="file" id="imp-file" accept=".csv,.txt,.xlsx,text/csv,text/plain" hidden>
+
+<nav class="tabbar glass" role="tablist" aria-label="Faner">
+  <button type="button" role="tab" data-go="program" aria-selected="true" aria-controls="tab-program"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Program</span></button>
+  <button type="button" role="tab" data-go="logg" aria-selected="false" aria-controls="tab-logg"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span>Logg</span></button>
+  <button type="button" role="tab" data-go="historikk" aria-selected="false" aria-controls="tab-historikk"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Historikk</span></button>
+  <button type="button" role="tab" data-go="ovelser" aria-selected="false" aria-controls="tab-ovelser"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12"/></svg><span>Øvelser</span></button>
+  <button type="button" role="tab" data-go="annet" aria-selected="false" aria-controls="tab-annet"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></svg><span>Annet</span></button>
+</nav>
+
+<script>
+"use strict";
+/* =====================================================================
+   PROGRAMMET – ENDRE HER
+   Hver øvelse er [navn, sett × reps, startvekt].
+   ===================================================================== */
+const PLAN = {
+  "push-a": { navn: "Push A", type: "push", tag: "Tung bryst", ovelser: [
+    ["Benkpress", "4 × 5–6", "45 kg"], ["Skulderpress", "3 × 6–8", "25 kg"], ["Skrå hantelpress", "3 × 8–10", "15 kg"],
+    ["Sidehev kabel", "3 × 12–15", "5 kg"], ["Triceps pushdown", "3 × 10–12", "15 kg"], ["Magemaskin", "3 × 12–15", "35 kg"]] },
+  "pull-a": { navn: "Pull A", type: "pull", tag: "Rygg tykkelse", ovelser: [
+    ["Roing stang", "4 × 6–8", "60 kg"], ["Bicepscurl", "3 × 8–10", "10 kg"], ["Nedtrekk, nøytralt grep", "3 × 8–10", "50 kg"],
+    ["Low row", "3 × 10–12", "40 kg"], ["Face pulls", "3 × 12–15", "15–25 kg"], ["Hammer curl", "3 × 10–12", "10 kg"]] },
+  "push-b": { navn: "Push B", type: "push", tag: "Brystvolum", ovelser: [
+    ["Skrå brystpress, stang", "4 × 6–8", "35 kg"], ["Chest press maskin", "3 × 10–12", "40 kg"], ["Pec fly", "3 × 12–15", "25–30 kg"],
+    ["Sidehev hantel", "3 × 12–15", "5 kg"], ["Triceps overhead", "3 × 10–12", "10 kg"]] },
+  "pull-b": { navn: "Pull B", type: "pull", tag: "Rygg bredde", ovelser: [
+    ["Nedtrekk bredt grep", "4 × 6–10", "45 kg"], ["Bicepscurl, kabel eller hantel", "3 × 10–12", "10 kg"], ["Enarms hantelroing", "3 × 8–10", "20 kg"],
+    ["Rear delt fly", "3 × 12–15", "20 kg"], ["Hammer curl", "3 × 10–12", "10 kg"], ["Hengende kneløft", "3 × 10–12", "kroppsvekt"]] },
+  "bein": { navn: "Bein", type: "legs", tag: "Erstattes av mandagstimen", ovelser: [
+    ["Leg press", "3 × 8–10", "100 kg"], ["Bulgarian split squat", "3 × 8–10", "10 kg"], ["Hip thrust", "3 × 8–10", "50 kg"],
+    ["Leg curl", "3 × 10–12", "35–40 kg"], ["Leg extension", "3 × 12", "35–40 kg"], ["Tåhev", "3 × 12–15", "60 kg"], ["Kabelcrunch eller planke", "3 sett", "–"]] },
+  "cardio": { navn: "Cardio", type: "cardio", tag: "Rolig løp eller gruppetime", ovelser: [["Aktivitet", "", ""], ["Tid eller distanse", "", ""]] },
+  "annet": { navn: "Annet", type: "other", tag: "Fra øvelsesbiblioteket", ovelser: [] }
+};
+const ORDER = ["push-a", "pull-a", "push-b", "pull-b", "bein", "cardio"];
+/* Uka, mandag først. key = økta den dagen, null = hvile */
+const WEEK = [
+  { d: "Man", key: "annet", w: "Perf." }, { d: "Tir", key: null, w: "Hvile" }, { d: "Ons", key: "pull-a", w: "Pull A" },
+  { d: "Tor", key: "push-a", w: "Push A" }, { d: "Fre", key: "pull-b", w: "Pull B" }, { d: "Lør", key: "push-b", w: "Push B" }, { d: "Søn", key: "cardio", w: "Cardio" }
+];
+const SUGGEST = ["Markløft", "Knebøy", "Rumensk markløft", "Utfall", "Pull-ups", "Dips", "Kettlebell swing", "Farmers walk", "Push-ups", "Planke", "Arnold press", "Kabelflyes", "Goblet squat", "Step-ups"];
+const CARDIO_FIELDS = /^(Aktivitet|Tid eller distanse)$/;
+const CSV_HEAD = ["ID", "Dato", "Økt", "Navn på økt", "Sted", "Øvelse", "Sett", "Notat", "Lagret"];
+const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+/* ===================================================================== */
+
+/* ---------- Hjelpere ---------- */
+const $ = (id) => document.getElementById(id);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function iso(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function todayISO() { return iso(new Date()); }
+function parseISO(s) { const p = String(s || "").split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function weekIdx(d) { return (d.getDay() + 6) % 7; }
+function fmtDate(s) { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s))) return s || ""; return parseISO(s).toLocaleDateString("nb-NO", { weekday: "short", day: "numeric", month: "short" }); }
+function fmtWhen(s) {
+  if (!s) return "";
+  const d = new Date(s); if (isNaN(d)) return "";
+  const t = d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit" });
+  return iso(d) === todayISO() ? "i dag " + t : d.toLocaleDateString("nb-NO", { day: "numeric", month: "short" }) + " " + t;
+}
+function planOf(key) { return PLAN[key] || { navn: key || "", type: "other", ovelser: [] }; }
+function entryTitle(e) { return (e.okt === "annet" && e.tittel) ? "Annet · " + e.tittel : planOf(e.okt).navn; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function say(elm, text) { elm.textContent = text || ""; }
+function plural(n, en, fl) { return n + " " + (n === 1 ? en : fl); }
+function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+function chevron() {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("width", "18"); s.setAttribute("height", "18"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("fill", "none");
+  s.setAttribute("stroke", "currentColor"); s.setAttribute("stroke-width", "2"); s.setAttribute("stroke-linecap", "round"); s.setAttribute("aria-hidden", "true"); s.setAttribute("class", "chev");
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", "M9 6l6 6-6 6"); s.appendChild(p); return s;
+}
+function icon(path) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("width", "20"); s.setAttribute("height", "20"); s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("fill", "none");
+  s.setAttribute("stroke", "currentColor"); s.setAttribute("stroke-width", "2"); s.setAttribute("stroke-linecap", "round"); s.setAttribute("stroke-linejoin", "round"); s.setAttribute("aria-hidden", "true");
+  path.forEach((d) => { const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", d); s.appendChild(p); });
+  return s;
+}
+const ICON_OK = ["M12 3l7 3v6c0 4-3 7.5-7 9-4-1.5-7-5-7-9V6z", "M9 12l2 2 4-4"];
+const ICON_WARN = ["M12 3l7 3v6c0 4-3 7.5-7 9-4-1.5-7-5-7-9V6z", "M12 8v5", "M12 16.5v.01"];
+const loadedScripts = {};
+function loadScript(src) {
+  if (!loadedScripts[src]) loadedScripts[src] = new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = src; s.onload = res;
+    s.onerror = () => { delete loadedScripts[src]; rej(new Error("load")); }; document.head.appendChild(s);
+  });
+  return loadedScripts[src];
+}
+
+/* ---------- Lagring i appen (IndexedDB) ---------- */
+let idb = null;
+function openDb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("treningslogg", 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains("okter")) d.createObjectStore("okter", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("kv")) d.createObjectStore("kv");
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function run(store, mode, fn) {
+  return new Promise((res, rej) => {
+    const t = idb.transaction(store, mode), out = fn(t.objectStore(store));
+    t.oncomplete = () => res(out ? out.result : undefined);
+    t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+const dbAll = () => run("okter", "readonly", (s) => s.getAll());
+const dbPut = (list) => run("okter", "readwrite", (s) => { list.forEach((e) => s.put(e)); });
+const dbDel = (id) => run("okter", "readwrite", (s) => { s.delete(id); });
+const kvGet = (k) => run("kv", "readonly", (s) => s.get(k));
+const kvSet = (k, v) => run("kv", "readwrite", (s) => { s.put(v, k); });
+
+/* ---------- Tilstand ---------- */
+let entries = [], lib = [], pendingDel = [], headerSent = false, lastSent = "";
+let ready = false, saving = false, oktTouched = false, filter = "";
+let annetRows = [{ navn: "", sett: "" }], annetTittel = "";
+const settings = { snarvei: "Treningslogg", auto: true };
+try { const s = JSON.parse(localStorage.getItem("tl-innst") || "{}"); if (typeof s.snarvei === "string") settings.snarvei = s.snarvei; if (typeof s.auto === "boolean") settings.auto = s.auto; } catch (e) {}
+function saveSettings() { try { localStorage.setItem("tl-innst", JSON.stringify(settings)); } catch (e) {} }
+
+function sortEntries() { entries.sort((a, b) => a.date !== b.date ? (a.date < b.date ? 1 : -1) : (a.opprettet < b.opprettet ? 1 : -1)); }
+function lastSettFor(navn, okt) {
+  for (const e of entries) {
+    if (okt && e.okt !== okt) continue;
+    for (const o of (e.ovelser || [])) if (o && o.navn === navn && o.sett) return o.sett;
+  }
+  return "";
+}
+
+/* ---------- Faner ---------- */
+const TABS = ["program", "logg", "historikk", "ovelser", "annet"];
+let current = null; const scrollPos = {};
+function showTab(name) {
+  if (!TABS.includes(name)) name = "program";
+  if (current && current !== name) scrollPos[current] = window.scrollY;
+  TABS.forEach((t) => { $("tab-" + t).hidden = t !== name; });
+  document.querySelectorAll(".tabbar button").forEach((b) => b.setAttribute("aria-selected", b.dataset.go === name ? "true" : "false"));
+  if (current !== name) window.scrollTo(0, scrollPos[name] || 0);
+  current = name;
+}
+document.querySelectorAll(".tabbar button").forEach((b) => b.addEventListener("click", () => {
+  if (b.dataset.go === current) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+  if (location.hash !== "#" + b.dataset.go) location.hash = b.dataset.go; else showTab(b.dataset.go);
+}));
+window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
+function goTab(name) { if (location.hash !== "#" + name) location.hash = name; else showTab(name); }
+
+/* ---------- Program ---------- */
+function renderProgram() {
+  const ti = weekIdx(new Date()), week = $("week"); week.textContent = "";
+  WEEK.forEach((w, i) => {
+    const b = el("button"); b.type = "button";
+    if (i === ti) { b.className = "today"; b.setAttribute("aria-current", "date"); }
+    b.appendChild(el("span", "d", w.d)); b.appendChild(el("span", "dot " + (w.key ? planOf(w.key).type : "rest"))); b.appendChild(el("span", "w", w.w));
+    b.setAttribute("aria-label", w.d + ": " + (w.key === "annet" ? "Performance Strength" : w.w));
+    b.addEventListener("click", () => { const t = w.key && $("ses-" + w.key); if (t) { t.open = true; t.scrollIntoView({ behavior: "smooth", block: "start" }); } });
+    week.appendChild(b);
+  });
+  const todayKey = WEEK[ti].key;
+  $("program-sub").textContent = todayKey === "annet" ? "I dag: Performance Strength" : todayKey ? "I dag: " + planOf(todayKey).navn : "I dag: hviledag";
+  const box = $("sessions"), open = {};
+  box.querySelectorAll("details").forEach((d) => { open[d.id] = d.open; });
+  box.textContent = "";
+  if (todayKey === "annet") {
+    const c = el("div", "card glass other");
+    c.appendChild(el("span", "tag", "I dag · mandag")); c.appendChild(el("h2", null, "Performance Strength"));
+    c.appendChild(el("p", "note", "Bein og skulderpress i timen. Logg den under «Annet» med øvelser fra biblioteket."));
+    const a = el("button", "btn", "Logg timen"); a.type = "button";
+    a.addEventListener("click", () => { fOkt.value = "annet"; oktTouched = true; annetTittel = "Performance Strength"; exBox.textContent = ""; renderFields(); goTab("logg"); });
+    c.appendChild(a); box.appendChild(c);
+  }
+  ORDER.forEach((key) => {
+    const p = planOf(key), d = el("details", "session glass " + p.type); d.id = "ses-" + key;
+    d.open = (d.id in open) ? open[d.id] : key === todayKey;
+    const s = el("summary"); s.appendChild(el("span", "bar"));
+    const t = el("span", "sum-txt"); t.appendChild(el("strong", null, p.navn));
+    t.appendChild(el("span", "small", (key === todayKey ? "I dag · " : "") + p.tag + (key === "cardio" ? "" : " · " + p.ovelser.length + " øvelser")));
+    s.appendChild(t); s.appendChild(chevron()); d.appendChild(s);
+    const body = el("div", "session-body");
+    if (key === "cardio") body.appendChild(el("p", "note", "40–60 minutter rolig løping, eller en gruppetime som Indoor running. Holder kondisen fra maratonet ved like og hjelper på fettprosenten."));
+    else {
+      p.ovelser.forEach((o) => {
+        const r = el("div", "ex-row");
+        r.appendChild(el("span", null, o[0])); r.appendChild(el("span", "sr", o[1])); r.appendChild(el("span", "kg", o[2]));
+        const last = lastSettFor(o[0]); if (last) r.appendChild(el("span", "last", "Sist: " + last));
+        body.appendChild(r);
+      });
+      if (key === "bein") body.appendChild(el("p", "note", "Mandager dekker Performance Strength beina. Bruk denne hvis du trener bein på egen hånd."));
+    }
+    const go = el("button", "btn", "Logg " + p.navn); go.type = "button"; go.style.marginTop = "6px";
+    go.addEventListener("click", () => { fOkt.value = key; oktTouched = true; exBox.textContent = ""; renderFields(); goTab("logg"); });
+    body.appendChild(go); d.appendChild(body); box.appendChild(d);
+  });
+}
+
+/* ---------- Logg ---------- */
+const form = $("log-form"), fDate = $("f-date"), fOkt = $("f-okt"), fNote = $("f-note"), fSted = $("f-sted");
+const fSave = $("f-save"), fStatus = $("f-status"), exBox = $("ex-fields");
+Object.keys(PLAN).forEach((k) => { const o = el("option", null, PLAN[k].navn); o.value = k; fOkt.appendChild(o); });
+function defaultKey(s) { return WEEK[weekIdx(parseISO(s))].key || "cardio"; }
+
+function renderFields() {
+  const key = fOkt.value;
+  if (key === "annet") { renderAnnet(); return; }
+  const old = {}; exBox.querySelectorAll("input").forEach((i) => { old[i.dataset.navn] = i.value; });
+  exBox.textContent = "";
+  planOf(key).ovelser.forEach((o, i) => {
+    const navn = o[0], id = "ex-" + key + "-" + i, lab = el("label"); lab.setAttribute("for", id);
+    lab.appendChild(document.createTextNode(navn));
+    const last = lastSettFor(navn, key); if (last) lab.appendChild(el("span", "lastx", "Sist: " + last));
+    const inp = el("input"); inp.type = "text"; inp.id = id; inp.dataset.navn = navn; inp.autocomplete = "off";
+    inp.placeholder = key === "cardio" ? (i === 0 ? "f.eks. rolig løping" : "f.eks. 45 min / 8 km") : "vekt x reps, …";
+    if (old[navn]) inp.value = old[navn];
+    lab.appendChild(inp); exBox.appendChild(lab);
+  });
+}
+function renderAnnet() {
+  exBox.textContent = "";
+  const tl = el("label"); tl.setAttribute("for", "annet-tittel"); tl.appendChild(document.createTextNode("Navn på økta (valgfritt)"));
+  const ti = el("input"); ti.type = "text"; ti.id = "annet-tittel"; ti.maxLength = 60; ti.autocomplete = "off"; ti.placeholder = "f.eks. Performance Strength"; ti.value = annetTittel;
+  ti.addEventListener("input", () => { annetTittel = ti.value; });
+  tl.appendChild(ti); exBox.appendChild(tl);
+  if (!lib.length) {
+    const h = el("p", "small"); h.appendChild(document.createTextNode("Biblioteket er tomt. Legg til øvelser under "));
+    const a = el("a", null, "Øvelser"); a.href = "#ovelser"; a.style.color = "var(--accent)"; h.appendChild(a); h.appendChild(document.createTextNode(" først."));
+    exBox.appendChild(h);
+  }
+  annetRows.forEach((row, i) => {
+    const wrap = el("div", "annet-row");
+    const sl = el("label"); sl.setAttribute("for", "annet-ov-" + i); sl.appendChild(document.createTextNode("Øvelse " + (i + 1)));
+    const sel = el("select"); sel.id = "annet-ov-" + i;
+    const o0 = el("option", null, "Velg øvelse"); o0.value = ""; sel.appendChild(o0);
+    const names = lib.slice(); if (row.navn && !names.includes(row.navn)) names.unshift(row.navn);
+    names.forEach((n) => { const o = el("option", null, n); o.value = n; sel.appendChild(o); });
+    sel.value = row.navn; sl.appendChild(sel);
+    const pl = el("label", "sett"); pl.setAttribute("for", "annet-sett-" + i); pl.appendChild(document.createTextNode("Sett "));
+    const ls = el("span", "lastx"); const l0 = row.navn ? lastSettFor(row.navn) : ""; ls.textContent = l0 ? "Sist: " + l0 : ""; pl.appendChild(ls);
+    const inp = el("input"); inp.type = "text"; inp.id = "annet-sett-" + i; inp.autocomplete = "off"; inp.placeholder = "f.eks. 60x8, 60x8"; inp.value = row.sett;
+    inp.addEventListener("input", () => { row.sett = inp.value; });
+    pl.appendChild(inp);
+    sel.addEventListener("change", () => { row.navn = sel.value; const l2 = row.navn ? lastSettFor(row.navn) : ""; ls.textContent = l2 ? "Sist: " + l2 : ""; });
+    const rm = el("button", "btn-ghost", "Fjern"); rm.type = "button"; rm.setAttribute("aria-label", "Fjern øvelse " + (i + 1));
+    rm.addEventListener("click", () => { annetRows.splice(i, 1); if (!annetRows.length) annetRows.push({ navn: "", sett: "" }); renderAnnet(); });
+    wrap.appendChild(sl); wrap.appendChild(pl); wrap.appendChild(rm); exBox.appendChild(wrap);
+  });
+  const add = el("button", "btn-soft", "+ Legg til øvelse"); add.type = "button"; add.style.justifySelf = "start";
+  add.addEventListener("click", () => { annetRows.push({ navn: "", sett: "" }); renderAnnet(); const s = $("annet-ov-" + (annetRows.length - 1)); if (s) s.focus(); });
+  exBox.appendChild(add);
+}
+function renderHint() {
+  $("f-hint").textContent = settings.auto ? "Lagres i appen og i " + "Treningslogg.csv via snarveien." : "Lagres i appen. Filkopi er slått av under Annet › Lagring.";
+}
+
+fDate.value = todayISO();
+fOkt.value = defaultKey(fDate.value);
+if (fOkt.value === "annet" && weekIdx(new Date()) === 0) annetTittel = "Performance Strength";
+fDate.addEventListener("change", () => { if (!oktTouched && fDate.value) { fOkt.value = defaultKey(fDate.value); exBox.textContent = ""; renderFields(); } });
+fOkt.addEventListener("change", () => { oktTouched = true; exBox.textContent = ""; renderFields(); });
+
+form.addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  if (!ready || saving) return;
+  if (!fDate.value) { say(fStatus, "Velg en dato."); return; }
+  const ovelser = [], isAnnet = fOkt.value === "annet";
+  if (isAnnet) {
+    let missing = false;
+    annetRows.forEach((r) => { const v = String(r.sett || "").trim(); if (r.navn && v) ovelser.push({ navn: r.navn, sett: v.slice(0, 300) }); else if (!r.navn && v) missing = true; });
+    if (missing) { say(fStatus, "Velg øvelse for alle sett du har fylt inn."); return; }
+  } else {
+    exBox.querySelectorAll("input").forEach((i) => { const v = i.value.trim(); if (v) ovelser.push({ navn: i.dataset.navn, sett: v.slice(0, 300) }); });
+  }
+  const notat = fNote.value.trim().slice(0, 2000);
+  if (!ovelser.length && !notat) { say(fStatus, "Fyll inn minst én øvelse eller et notat."); return; }
+  const e = { id: uid(), date: fDate.value, okt: fOkt.value, ovelser, notat, opprettet: new Date().toISOString(), iFil: false };
+  if (isAnnet && annetTittel.trim()) e.tittel = annetTittel.trim().slice(0, 60);
+  if (fSted.value.trim()) e.sted = fSted.value.trim().slice(0, 60);
+  saving = true; fSave.disabled = true; say(fStatus, "Lagrer …");
+  try {
+    await dbPut([e]);
+    entries.push(e); sortEntries();
+    fNote.value = ""; exBox.textContent = ""; annetRows = [{ navn: "", sett: "" }]; annetTittel = ""; oktTouched = false;
+    renderAll(); requestPersist();
+    if (settings.auto) await sendToFile(false, fStatus, "Lagret i appen. Åpner snarveien for å skrive til filen …");
+    else say(fStatus, "Lagret i appen.");
+  } catch (err) {
+    say(fStatus, "Kunne ikke lagre. Prøv igjen.");
+  } finally { saving = false; fSave.disabled = false; }
+});
+
+/* ---------- Historikk ---------- */
+const histStatus = $("hist-status"), list = $("entries");
+function exerciseNames() {
+  const count = {};
+  entries.forEach((e) => (e.ovelser || []).forEach((o) => { if (o && o.navn && o.sett && !CARDIO_FIELDS.test(o.navn)) count[o.navn] = (count[o.navn] || 0) + 1; }));
+  return Object.keys(count).sort((a, b) => count[b] - count[a] || a.localeCompare(b, "nb"));
+}
+function filtered() { return filter ? entries.filter((e) => (e.ovelser || []).some((o) => o && o.navn === filter && o.sett)) : entries; }
+function renderTiles() {
+  const tiles = $("tiles"); tiles.textContent = "";
+  const month = todayISO().slice(0, 7), start = new Date(); start.setDate(start.getDate() - weekIdx(start));
+  const s = iso(start);
+  [[entries.filter((e) => String(e.date) >= s).length, "denne uka"], [entries.filter((e) => String(e.date).slice(0, 7) === month).length, "denne måneden"], [entries.length, "totalt"]]
+    .forEach((d) => { const t = el("div", "tile glass"); t.appendChild(el("span", "v", String(d[0]))); t.appendChild(el("span", "l", d[1])); tiles.appendChild(t); });
+}
+function renderFilter() {
+  const box = $("filter-chips"); box.textContent = "";
+  const names = exerciseNames(); if (filter && !names.includes(filter)) filter = "";
+  [""].concat(names).forEach((n) => {
+    const b = el("button", "fchip", n || "Alle"); b.type = "button"; b.setAttribute("aria-pressed", n === filter ? "true" : "false");
+    b.addEventListener("click", () => { filter = n; renderFilter(); renderEntries(); }); box.appendChild(b);
+  });
+}
+function renderEntries() {
+  list.textContent = "";
+  const rows = filtered();
+  $("filter-title").textContent = filter ? filter + " · " + plural(rows.length, "økt", "økter") : "Alle økter";
+  if (!rows.length) { list.appendChild(el("p", "small", entries.length ? "Ingen økter med denne øvelsen." : "Ingen økter logget ennå. Den første du lagrer, dukker opp her.")); return; }
+  rows.forEach((e) => {
+    const card = el("article", "entry glass " + planOf(e.okt).type), head = el("div", "entry-head");
+    head.appendChild(el("span", "dot")); head.appendChild(el("strong", null, entryTitle(e)));
+    head.appendChild(el("span", "small", fmtDate(e.date) + (e.sted ? " · " + e.sted : "")));
+    const del = el("button", "btn-ghost", "Slett"); del.type = "button"; del.setAttribute("aria-label", "Slett " + entryTitle(e) + " " + fmtDate(e.date));
+    del.addEventListener("click", () => {
+      if (!del.classList.contains("confirm")) { del.classList.add("confirm"); del.textContent = "Bekreft"; setTimeout(() => { del.classList.remove("confirm"); del.textContent = "Slett"; }, 4000); return; }
+      deleteEntry(e).catch(() => say(histStatus, "Kunne ikke slette økta. Prøv igjen."));
+    });
+    head.appendChild(del); card.appendChild(head);
+    const ov = (e.ovelser || []).filter((o) => o && o.sett && (!filter || o.navn === filter));
+    if (ov.length) {
+      const ul = el("ul");
+      ov.forEach((o) => { const li = el("li"); li.appendChild(el("span", null, o.navn + ": ")); li.appendChild(document.createTextNode(o.sett)); ul.appendChild(li); });
+      card.appendChild(ul);
+    }
+    if (e.notat) card.appendChild(el("p", "n2", e.notat));
+    list.appendChild(card);
+  });
+}
+async function deleteEntry(e) {
+  await dbDel(e.id);
+  entries = entries.filter((x) => x.id !== e.id);
+  if (e.iFil) { pendingDel.push({ id: e.id, date: e.date }); await kvSet("slettKo", pendingDel); }
+  renderAll();
+}
+
+/* ---------- Sikkerhetskopi: snarvei og fil ---------- */
+function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
+function csvLine(arr) { return arr.map(q).join(";"); }
+function flat(s) { return String(s || "").replace(/\s*\r?\n\s*/g, " / "); }
+function entryRows(e) {
+  const ov = (e.ovelser || []).filter((o) => o && o.sett);
+  const base = [e.id, e.date, planOf(e.okt).navn, e.tittel || "", e.sted || ""], note = flat(e.notat), ts = e.opprettet || "";
+  if (!ov.length) return [base.concat(["", "", note, ts])];
+  return ov.map((o, i) => base.concat([o.navn, o.sett, i === 0 ? note : "", ts]));
+}
+function unsentCount() { return entries.filter((e) => !e.iFil).length + pendingDel.length; }
+function openShortcut(text) {
+  location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent(settings.snarvei.trim()) + "&input=text&text=" + encodeURIComponent(text);
+}
+async function sendToFile(all, statusEl, msg) {
+  if (!settings.snarvei.trim()) { say(statusEl, "Skriv inn navnet på snarveien under Annet › Lagring."); return; }
+  const toSend = (all ? entries.slice() : entries.filter((e) => !e.iFil)).sort((a, b) => a.date !== b.date ? (a.date < b.date ? -1 : 1) : (a.opprettet < b.opprettet ? -1 : 1));
+  const dels = pendingDel.slice();
+  if (!toSend.length && !dels.length) { say(statusEl, "Alt er allerede sendt til filen."); return; }
+  if (toSend.length > 150) { say(statusEl, "Det er for mange økter til å sende på én gang. Trykk «CSV» under Eksporter, og lagre filen som Treningslogg.csv i Snarveier-mappen i iCloud Drive."); return; }
+  const lines = [];
+  if (!headerSent) lines.push(csvLine(CSV_HEAD));
+  toSend.forEach((e) => entryRows(e).forEach((r) => lines.push(csvLine(r))));
+  const now = new Date().toISOString();
+  dels.forEach((d) => lines.push(csvLine([d.id, d.date, "SLETTET", "", "", "", "", "", now])));
+  toSend.forEach((e) => { e.iFil = true; });
+  await dbPut(toSend);
+  pendingDel = []; await kvSet("slettKo", []);
+  headerSent = true; await kvSet("header", true);
+  lastSent = now; await kvSet("sistSendt", now);
+  renderBackup();
+  say(statusEl, msg || "Åpner snarveien …");
+  openShortcut(lines.join("\n"));
+}
+async function testShortcut() {
+  const st = $("s-status");
+  if (!settings.snarvei.trim()) { say(st, "Skriv inn navnet på snarveien først."); return; }
+  const lines = [];
+  if (!headerSent) { lines.push(csvLine(CSV_HEAD)); headerSent = true; await kvSet("header", true); }
+  lines.push(csvLine(["#test", todayISO(), "Test fra appen", "", "", "", "", "Denne linjen hoppes over ved import", new Date().toISOString()]));
+  say(st, "Åpner snarveien. Sjekk at Treningslogg.csv dukker opp i Filer › iCloud Drive › Snarveier.");
+  openShortcut(lines.join("\n"));
+}
+
+function buildBackupCard(box) {
+  let st = box._status;
+  if (!st) { st = el("p", "status"); st.setAttribute("role", "status"); box._status = st; }
+  box.textContent = "";
+  const head = el("div", "backup-head"), ico = el("div", "backup-ico"), txt = el("div", "backup-txt");
+  const n = unsentCount();
+  let ok = true, title, sub;
+  if (!settings.auto) { ok = false; title = "Filkopi er slått av"; sub = "Øktene ligger bare i appen. Slå den på under Annet › Lagring."; }
+  else if (!entries.length && !pendingDel.length) { title = "Ingen økter ennå"; sub = "Hver økt du lagrer, skrives også til Treningslogg.csv."; }
+  else if (n === 0) { title = entries.length === 1 ? "Økta er sendt til filen" : "Alle " + entries.length + " økter er sendt til filen"; sub = "Treningslogg.csv" + (lastSent ? " · sist sendt " + fmtWhen(lastSent) : ""); }
+  else { ok = false; title = plural(n, "endring", "endringer") + " er ikke sendt til filen"; sub = "Trykk «Send nå» for å skrive dem til Treningslogg.csv."; }
+  if (!ok) ico.classList.add("warn");
+  ico.appendChild(icon(ok ? ICON_OK : ICON_WARN));
+  txt.appendChild(el("strong", null, title)); txt.appendChild(el("span", "small", sub));
+  head.appendChild(ico); head.appendChild(txt); box.appendChild(head);
+  const btns = el("div", "btns2");
+  if (settings.auto && n > 0) {
+    const s = el("button", "btn-soft", "Send nå"); s.type = "button";
+    s.addEventListener("click", () => sendToFile(false, st).catch(() => say(st, "Noe gikk galt. Prøv igjen.")));
+    btns.appendChild(s);
+  } else {
+    const x = el("button", "btn-soft", "Eksporter Excel"); x.type = "button";
+    x.addEventListener("click", () => exportXlsx(st)); btns.appendChild(x);
+  }
+  const imp = el("button", "btn-soft", "Importer fil"); imp.type = "button";
+  imp.addEventListener("click", () => { importStatusEl = st; $("imp-file").click(); });
+  btns.appendChild(imp);
+  box.appendChild(btns); box.appendChild(st);
+}
+function renderBackup() { buildBackupCard($("backup-hist")); buildBackupCard($("backup-lag")); renderHint(); }
+
+/* Be iOS om varig lagring */
+async function requestPersist() {
+  try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+  renderStoreInfo();
+}
+async function renderStoreInfo() {
+  let p = null;
+  try { if (navigator.storage && navigator.storage.persisted) p = await navigator.storage.persisted(); } catch (e) {}
+  $("app-store-info").textContent = plural(entries.length, "økt", "økter") + " lagret på telefonen. Varig lagring: " + (p === true ? "på" : p === false ? "ikke bekreftet av iOS ennå" : "ukjent") + ". Filen er den sikre kopien uansett.";
+}
+
+/* ---------- Eksport ---------- */
+async function shareFile(blob, filename, type, statusEl) {
+  const file = new File([blob], filename, { type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); say(statusEl, "Velg «Arkiver i Filer» for å lagre filen."); return; }
+    catch (e) { if (e && e.name === "AbortError") { say(statusEl, ""); return; } }
+  }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  say(statusEl, "Filen er lastet ned.");
+}
+function allRowsAsc() {
+  const rows = [];
+  entries.slice().sort((a, b) => a.date !== b.date ? (a.date < b.date ? -1 : 1) : (a.opprettet < b.opprettet ? -1 : 1)).forEach((e) => entryRows(e).forEach((r) => rows.push(r)));
+  return rows;
+}
+async function exportXlsx(statusEl) {
+  if (!entries.length) { say(statusEl, "Ingen økter å eksportere."); return; }
+  say(statusEl, "Lager Excel-fil …");
+  try { await loadScript(XLSX_URL); }
+  catch (e) { say(statusEl, "Excel trenger nett for å lastes. Prøv CSV, som virker uten nett."); return; }
+  const ws = XLSX.utils.aoa_to_sheet([CSV_HEAD].concat(allRowsAsc()));
+  ws["!cols"] = [{ wch: 12 }, { wch: 11 }, { wch: 9 }, { wch: 22 }, { wch: 14 }, { wch: 28 }, { wch: 34 }, { wch: 50 }, { wch: 22 }];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Treningslogg");
+  const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  await shareFile(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "Treningslogg " + todayISO() + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", statusEl);
+}
+async function exportCsv(statusEl) {
+  if (!entries.length) { say(statusEl, "Ingen økter å eksportere."); return; }
+  const text = "﻿" + [csvLine(CSV_HEAD)].concat(allRowsAsc().map(csvLine)).join("\r\n");
+  await shareFile(new Blob([text], { type: "text/csv" }), "Treningslogg.csv", "text/csv", statusEl);
+}
+$("exp-xlsx").addEventListener("click", () => exportXlsx($("exp-status")));
+$("exp-csv").addEventListener("click", () => exportCsv($("exp-status")));
+
+/* ---------- Import ---------- */
+let importStatusEl = $("imp-status");
+$("imp-btn").addEventListener("click", () => { importStatusEl = $("imp-status"); $("imp-file").click(); });
+$("imp-file").addEventListener("change", async (ev) => {
+  const file = ev.target.files && ev.target.files[0]; ev.target.value = "";
+  if (!file) return;
+  const st = importStatusEl; say(st, "Leser filen …");
+  try { say(st, await importFile(file)); }
+  catch (e) { say(st, e && e.userMsg ? e.userMsg : "Kunne ikke lese filen. Er det en CSV- eller Excel-fil fra denne appen?"); }
+});
+function parseCSV(text, delim) {
+  const rows = []; let row = [], cell = "", inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else inQ = false; }
+      else cell += c;
+    } else if (c === '"') inQ = true;
+    else if (c === delim) { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += c;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+function normDate(s) {
+  s = String(s || "").trim(); let m;
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  if ((m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/))) return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/))) { const y = m[3].length === 2 ? "20" + m[3] : m[3]; return y + "-" + m[1].padStart(2, "0") + "-" + m[2].padStart(2, "0"); }
+  return "";
+}
+function oktKey(name) {
+  const n = String(name || "").trim().toLowerCase();
+  return Object.keys(PLAN).find((k) => PLAN[k].navn.toLowerCase() === n) || "annet";
+}
+function signature(e) { return [e.date, e.okt, e.tittel || "", JSON.stringify((e.ovelser || []).map((o) => [o.navn, o.sett]))].join("|"); }
+async function importFile(file) {
+  let rows;
+  if (/\.xlsx?$/i.test(file.name)) {
+    try { await loadScript(XLSX_URL); } catch (e) { throw { userMsg: "Excel-filer trenger nett for å leses. Prøv igjen med nett, eller bruk CSV." }; }
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+  } else {
+    const text = (await file.text()).replace(/^﻿/, "");
+    const first = text.split(/\r?\n/)[0] || "";
+    rows = parseCSV(text, first.split(";").length >= first.split(",").length ? ";" : ",");
+  }
+  const hi = rows.findIndex((r) => r.some((c) => String(c).trim().toLowerCase() === "dato"));
+  if (hi === -1) throw { userMsg: "Fant ingen kolonne som heter «Dato» i filen." };
+  const col = {}; rows[hi].forEach((c, i) => { const k = String(c).trim().toLowerCase(); if (!(k in col)) col[k] = i; });
+  const get = (r, k) => (k in col && r[col[k]] != null) ? String(r[col[k]]).trim() : "";
+  const hasId = "id" in col;
+  const groups = new Map(), deleted = new Set(); let prevKey = null, n = 0;
+  rows.slice(hi + 1).forEach((r) => {
+    if (!r || !r.length) return;
+    const id = get(r, "id"), oktName = get(r, "økt");
+    if (id.startsWith("#")) return;
+    if (get(r, "dato").toLowerCase() === "dato") return;
+    if (oktName === "SLETTET") { if (id) deleted.add(id); return; }
+    const date = normDate(get(r, "dato")); if (!date) return;
+    let key;
+    if (hasId && id) key = id;
+    else { const k = [date, oktName, get(r, "navn på økt"), get(r, "sted")].join("|"); if (k !== prevKey) n++; prevKey = k; key = "g" + n; }
+    let g = groups.get(key);
+    if (!g) { g = { fileId: hasId && id ? id : "", date, oktName, tittel: get(r, "navn på økt"), sted: get(r, "sted"), ovelser: [], notat: "", opprettet: get(r, "lagret") }; groups.set(key, g); }
+    const navn = get(r, "øvelse"), sett = get(r, "sett");
+    if (navn && sett && !g.ovelser.some((o) => o.navn === navn && o.sett === sett)) g.ovelser.push({ navn, sett });
+    const note = get(r, "notat"); if (note && !g.notat) g.notat = note;
+  });
+  const haveIds = new Set(entries.map((e) => e.id)), haveSig = new Set(entries.map(signature));
+  const fresh = []; let skipped = 0;
+  groups.forEach((g) => {
+    if (g.fileId && deleted.has(g.fileId)) return;
+    const okt = oktKey(g.oktName);
+    const e = { date: g.date, okt, ovelser: g.ovelser, notat: g.notat.slice(0, 2000), opprettet: g.opprettet || new Date().toISOString() };
+    let tittel = g.tittel; if (okt === "annet" && !tittel && g.oktName && g.oktName.toLowerCase() !== "annet") tittel = g.oktName;
+    if (tittel) e.tittel = tittel.slice(0, 60);
+    if (g.sted) e.sted = g.sted.slice(0, 60);
+    e.id = g.fileId || "imp-" + hash(signature(e));
+    e.iFil = !!g.fileId;
+    const sig = signature(e);
+    if (haveIds.has(e.id) || haveSig.has(sig) || (!e.ovelser.length && !e.notat)) { skipped++; return; }
+    haveIds.add(e.id); haveSig.add(sig); fresh.push(e);
+  });
+  if (fresh.length) { await dbPut(fresh); entries = entries.concat(fresh); sortEntries(); renderAll(); requestPersist(); }
+  if (!fresh.length) return groups.size ? "Ingen nye økter. Alle " + plural(skipped, "økt", "økter") + " i filen finnes allerede i appen." : "Fant ingen økter i filen.";
+  return "La inn " + plural(fresh.length, "økt", "økter") + "." + (skipped ? " " + plural(skipped, "økt", "økter") + " fantes fra før." : "");
+}
+
+/* ---------- Bibliotek ---------- */
+const libInput = $("lib-input"), libStatus = $("lib-status");
+function renderLib() {
+  const box = $("lib-list"); box.textContent = "";
+  $("lib-count").textContent = "I biblioteket · " + lib.length;
+  if (!lib.length) box.appendChild(el("span", "small", "Ingen øvelser ennå."));
+  lib.forEach((n) => {
+    const c = el("span", "chip"); c.appendChild(document.createTextNode(n));
+    const b = el("button", null, "×"); b.type = "button"; b.setAttribute("aria-label", "Fjern " + n);
+    b.addEventListener("click", () => writeLib(lib.filter((x) => x !== n), n + " er fjernet."));
+    c.appendChild(b); box.appendChild(c);
+  });
+  const sug = $("lib-suggest"); sug.textContent = "";
+  const lower = lib.map((x) => x.toLowerCase());
+  SUGGEST.forEach((n) => {
+    if (lower.includes(n.toLowerCase())) return;
+    const b = el("button", "chip suggest", "+ " + n); b.type = "button";
+    b.addEventListener("click", () => addToLib(n)); sug.appendChild(b);
+  });
+}
+async function writeLib(next, msg) {
+  try { await kvSet("bibliotek", next); lib = next; renderLib(); if (fOkt.value === "annet") renderAnnet(); say(libStatus, msg); }
+  catch (e) { say(libStatus, "Kunne ikke lagre biblioteket. Prøv igjen."); }
+}
+function addToLib(name) {
+  const n = String(name || "").trim().replace(/\s+/g, " ").slice(0, 60);
+  if (!n) { say(libStatus, "Skriv inn et navn."); return; }
+  if (lib.some((x) => x.toLowerCase() === n.toLowerCase())) { say(libStatus, n + " finnes allerede."); return; }
+  writeLib(lib.concat([n]).sort((a, b) => a.localeCompare(b, "nb")), n + " er lagt til.");
+  libInput.value = "";
+}
+$("lib-form").addEventListener("submit", (ev) => { ev.preventDefault(); addToLib(libInput.value); });
+
+/* ---------- Annet: segmenter og innstillinger ---------- */
+const SEGS = [["seg-lag", "sub-lag"], ["seg-kost", "sub-kost"], ["seg-forkl", "sub-forkl"]];
+SEGS.forEach((s) => $(s[0]).addEventListener("click", () => {
+  SEGS.forEach((t) => { const on = t[0] === s[0]; $(t[0]).setAttribute("aria-selected", on ? "true" : "false"); $(t[1]).hidden = !on; });
+}));
+const sName = $("s-name"), sAuto = $("s-auto");
+sName.value = settings.snarvei; sAuto.checked = settings.auto;
+sName.addEventListener("input", () => { settings.snarvei = sName.value; saveSettings(); });
+sAuto.addEventListener("change", () => { settings.auto = sAuto.checked; saveSettings(); renderBackup(); });
+$("s-test").addEventListener("click", () => testShortcut().catch(() => say($("s-status"), "Noe gikk galt. Prøv igjen.")));
+$("s-all").addEventListener("click", () => sendToFile(true, $("s-status"), "Åpner snarveien med alle øktene. Dobbeltlinjer i filen er ufarlige.").catch(() => say($("s-status"), "Noe gikk galt. Prøv igjen.")));
+
+/* ---------- Oppstart ---------- */
+function renderAll() { renderProgram(); renderTiles(); renderFilter(); renderEntries(); renderBackup(); renderStoreInfo(); if (!exBox.contains(document.activeElement)) { exBox.textContent = ""; renderFields(); } }
+
+const standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+$("safari-banner").hidden = standalone;
+showTab(location.hash.slice(1));
+renderProgram(); renderFields(); renderLib(); renderHint();
+fSave.disabled = true;
+
+(async () => {
+  try {
+    idb = await openDb();
+    const [all, l, d, h, s] = await Promise.all([dbAll(), kvGet("bibliotek"), kvGet("slettKo"), kvGet("header"), kvGet("sistSendt")]);
+    entries = Array.isArray(all) ? all : []; sortEntries();
+    lib = Array.isArray(l) ? l.filter((x) => typeof x === "string" && x) : [];
+    pendingDel = Array.isArray(d) ? d : []; headerSent = !!h; lastSent = s || "";
+    ready = true; fSave.disabled = false;
+    renderAll(); renderLib();
+    if (entries.length) requestPersist();
+  } catch (e) {
+    say(histStatus, "Lagringen på telefonen kunne ikke åpnes. Last appen på nytt.");
+    say(fStatus, "Lagringen på telefonen kunne ikke åpnes. Last appen på nytt.");
+  }
+})();
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
