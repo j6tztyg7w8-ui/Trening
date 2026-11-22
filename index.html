@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Treningslogg">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#e8edf3">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
@@ -44,6 +44,7 @@
   --tab-off: #3f4a56;
   --font: -apple-system, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
   --radius: 22px;           /* hvor runde kortene er */
+  --status-tint: rgba(30,41,59,0.45); /* stripen bak klokka i lys modus */
   color-scheme: light;
 }
 /* Mørk modus (følger telefonens innstilling) */
@@ -56,7 +57,7 @@
     --glass: rgba(28,36,46,0.60); --glass-border: rgba(255,255,255,0.12);
     --glass-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.10);
     --field: rgba(255,255,255,0.07); --field-border: rgba(255,255,255,0.14); --line: rgba(255,255,255,0.10);
-    --chip: rgba(255,255,255,0.08); --tab-on: rgba(255,255,255,0.14); --tab-off: #c2c9d1;
+    --chip: rgba(255,255,255,0.08); --tab-on: rgba(255,255,255,0.14); --tab-off: #c2c9d1; --status-tint: rgba(11,15,20,0.35);
     color-scheme: dark;
   }
 }
@@ -65,6 +66,8 @@
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; min-height: 100vh; background: var(--base); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.45; }
+/* Uskarp stripe bak klokka og batteriet. Teksten der er alltid hvit, så stripen er litt mørk også i lys modus. */
+.statusblur { position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); z-index: 20; pointer-events: none; background: var(--status-tint); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); }
 .blobs { position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background: radial-gradient(340px 340px at 5% 4%, var(--b1), transparent 70%), radial-gradient(320px 320px at 105% 45%, var(--b2), transparent 70%), radial-gradient(300px 300px at 15% 92%, var(--b3), transparent 70%); }
 .wrap { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top)) 16px calc(120px + env(safe-area-inset-bottom)); display: grid; gap: 14px; }
@@ -118,7 +121,7 @@ details[open] .chev { transform: rotate(90deg); }
 /* Skjema */
 label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); min-width: 0; }
 input, select, textarea, button { font: inherit; color: var(--ink); }
-input[type="text"], input[type="date"], select, textarea { width: 100%; min-width: 0; padding: 11px 12px; border-radius: 14px; border: 1px solid var(--field-border); background: var(--field); font-size: 16px; font-weight: 500; }
+input[type="text"], input[type="password"], input[type="date"], select, textarea { width: 100%; min-width: 0; padding: 11px 12px; border-radius: 14px; border: 1px solid var(--field-border); background: var(--field); font-size: 16px; font-weight: 500; }
 input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-height: 46px; text-align: left; }
 select { -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
 textarea { min-height: 70px; resize: vertical; }
@@ -133,7 +136,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .btn-soft { all: unset; box-sizing: border-box; text-align: center; padding: 11px 12px; border-radius: 14px; font-size: 14px; font-weight: 600; cursor: pointer; background: var(--field); border: 1px solid var(--field-border); }
 .btn[disabled], .btn-soft[disabled] { opacity: 0.5; cursor: not-allowed; }
 .btn-ghost { all: unset; padding: 6px 10px; border-radius: 10px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); cursor: pointer; }
-.btn-ghost.confirm { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn-ghost.confirm, .btn-soft.confirm { background: var(--danger); color: #fff; border-color: var(--danger); }
 .btn:focus-visible, .btn-soft:focus-visible, .btn-ghost:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .btns2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .status { font-size: 13px; color: var(--muted); }
@@ -150,6 +153,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 .backup-ico.warn { background: var(--warn-bg); color: var(--warn); }
 .backup-txt { display: grid; min-width: 0; }
 .backup-txt strong { font-size: 16px; }
+.brows { display: grid; gap: 6px; padding: 2px 0; }
+.brow { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.brow .bdot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--rest); }
+.brow .bdot.ok { background: var(--ok); } .brow .bdot.warn { background: var(--warn); }
+.brow strong { flex: none; min-width: 92px; }
+.brow span { color: var(--muted); min-width: 0; }
 
 /* Historikk */
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -182,6 +191,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 </style>
 </head>
 <body>
+<div class="statusblur" aria-hidden="true"></div>
 <div class="blobs" aria-hidden="true"></div>
 <main class="wrap">
 
@@ -270,10 +280,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
       <p class="status" id="s-status" role="status"></p>
     </div>
 
-    <div class="card glass">
-      <h3>Gjenopprett</h3>
-      <p class="small">Ny telefon eller tom app? Velg Treningslogg.csv, eller en Excel-fil eksportert fra den gamle appen. Økter som mangler legges inn igjen. Ingenting blir overskrevet eller slettet.</p>
-      <button type="button" class="btn" id="imp-btn">Importer fra fil</button>
+    <div class="card glass" id="restore-card">
+      <h3>Hent loggen fra iCloud</h3>
+      <p class="small">Ny telefon eller tom app? Trykk «Hent fra iCloud». Snarveien kopierer Treningslogg.csv, og når du er tilbake i appen trykker du «Lim inn». Økter som mangler legges inn. Ingenting blir overskrevet eller slettet.</p>
+      <label for="s-hent">Navn på hente-snarveien<input type="text" id="s-hent" autocomplete="off" value="Treningslogg hent"></label>
+      <button type="button" class="btn" id="imp-fetch">Hent fra iCloud</button>
+      <div class="btns2">
+        <button type="button" class="btn-soft" id="imp-paste">Lim inn</button>
+        <button type="button" class="btn-soft" id="imp-btn">Velg fil i stedet</button>
+      </div>
+      <p class="small">«Velg fil» leser også Excel-filer, for eksempel eksporten fra den gamle Claude-appen.</p>
       <p class="status" id="imp-status" role="status"></p>
     </div>
 
@@ -288,16 +304,60 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     </div>
 
     <div class="card glass prose">
-      <h3>Slik setter du opp snarveien</h3>
+      <h3>Slik setter du opp snarveiene</h3>
+      <p><strong>1. «Treningslogg» lagrer</strong></p>
       <ol>
-        <li>Åpne Snarveier-appen og trykk <strong>+</strong>.</li>
-        <li>Gi snarveien navnet <strong>Treningslogg</strong>, nøyaktig som over.</li>
+        <li>Åpne Snarveier-appen, trykk <strong>+</strong> og gi snarveien navnet <strong>Treningslogg</strong>.</li>
         <li>Legg til handlingen <strong>Legg til i tekstfil</strong> (engelsk: Append to Text File).</li>
-        <li>Sett teksten til <strong>Snarvei-inndata</strong> (Shortcut Input), og filbanen til <strong>Treningslogg.csv</strong>. Slå på <strong>Ny linje</strong>.</li>
+        <li>Sett teksten til <strong>Snarvei-inndata</strong> (Shortcut Input) og filbanen til <strong>Treningslogg.csv</strong>. Slå på <strong>Ny linje</strong>.</li>
         <li>Trykk <strong>Test snarveien</strong> her. Filen dukker opp i Filer › iCloud Drive › Snarveier.</li>
       </ol>
-      <p class="small">Etter at snarveien har kjørt, trykker du på tilbake-pilen øverst til venstre for å komme tilbake til appen.</p>
+      <p><strong>2. «Treningslogg hent» henter</strong></p>
+      <ol>
+        <li>Lag en ny snarvei med navnet <strong>Treningslogg hent</strong>.</li>
+        <li>Legg til <strong>Hent fil</strong> (Get File). Velg Snarveier › <strong>Treningslogg.csv</strong>, og slå av «Vis dokumentvelger».</li>
+        <li>Legg til <strong>Hent tekst fra inndata</strong> (Get Text from Input).</li>
+        <li>Legg til <strong>Kopier til utklippstavle</strong> (Copy to Clipboard).</li>
+      </ol>
+      <p class="small">Etter at en snarvei har kjørt, trykker du på tilbake-pilen øverst til venstre for å komme tilbake til appen.</p>
     </div>
+    <details class="session glass" id="gh-details">
+      <summary><span class="sum-txt"><strong>Valgfritt: synk med GitHub</strong><span class="small">En ekstra kopi utenfor iCloud. Trengs ikke.</span></span><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></summary>
+      <div class="session-body">
+    <div class="card">
+      <h3>Synk med GitHub</h3>
+      <div id="gh-off" class="panel" style="gap:10px">
+        <p class="small">Lagrer hver økt automatisk i et privat GitHub-repo. Etter en ny installasjon eller på ny telefon kobler du til igjen, så henter appen hele loggen derfra.</p>
+        <label for="gh-owner">GitHub-brukernavn<input type="text" id="gh-owner" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label for="gh-repo">Privat repo<input type="text" id="gh-repo" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="trening-data"></label>
+        <label for="gh-token">Tilgangsnøkkel<input type="password" id="gh-token" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></label>
+        <button type="button" class="btn" id="gh-connect">Koble til</button>
+      </div>
+      <div id="gh-on" class="panel" style="gap:10px" hidden>
+        <p class="small" id="gh-info"></p>
+        <div class="btns2">
+          <button type="button" class="btn-soft" id="gh-sync">Synk nå</button>
+          <button type="button" class="btn-soft" id="gh-disc">Koble fra</button>
+        </div>
+      </div>
+      <p class="status" id="gh-status" role="status"></p>
+    </div>
+
+    <div class="card prose" id="gh-guide">
+      <h3>Slik setter du opp GitHub-synk</h3>
+      <ol>
+        <li>På github.com: trykk <strong>+</strong> › <strong>New repository</strong>. Kall det <strong>trening-data</strong>, velg <strong>Private</strong>, huk av for <strong>Add a README</strong> og trykk <strong>Create repository</strong>.</li>
+        <li>Trykk profilbildet › <strong>Settings</strong> › <strong>Developer settings</strong> › <strong>Personal access tokens</strong> › <strong>Fine-grained tokens</strong> › <strong>Generate new token</strong>.</li>
+        <li>Navn: <strong>Treningslogg</strong>. Expiration: velg lengst mulig. Repository access: <strong>Only select repositories</strong> › <strong>trening-data</strong>.</li>
+        <li>Under <strong>Permissions</strong> › <strong>Repository permissions</strong>: sett <strong>Contents</strong> til <strong>Read and write</strong>.</li>
+        <li>Trykk <strong>Generate token</strong>, kopier nøkkelen (den vises bare én gang) og lim den inn over.</li>
+      </ol>
+      <p class="small">Nøkkelen lagres bare på denne telefonen. Lagre den gjerne i Passord-appen, så har du den hvis du må koble til igjen.</p>
+    </div>
+
+      </div>
+    </details>
+
   </div>
 
   <!-- Kosthold -->
@@ -339,7 +399,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 </section>
 </main>
 
-<input type="file" id="imp-file" accept=".csv,.txt,.xlsx,text/csv,text/plain" hidden>
+<input type="file" id="imp-file" accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain" hidden>
 
 <nav class="tabbar glass" role="tablist" aria-label="Faner">
   <button type="button" role="tab" data-go="program" aria-selected="true" aria-controls="tab-program"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Program</span></button>
@@ -461,8 +521,8 @@ const kvSet = (k, v) => run("kv", "readwrite", (s) => { s.put(v, k); });
 let entries = [], lib = [], pendingDel = [], headerSent = false, lastSent = "";
 let ready = false, saving = false, oktTouched = false, filter = "";
 let annetRows = [{ navn: "", sett: "" }], annetTittel = "";
-const settings = { snarvei: "Treningslogg", auto: true };
-try { const s = JSON.parse(localStorage.getItem("tl-innst") || "{}"); if (typeof s.snarvei === "string") settings.snarvei = s.snarvei; if (typeof s.auto === "boolean") settings.auto = s.auto; } catch (e) {}
+const settings = { snarvei: "Treningslogg", hent: "Treningslogg hent", auto: true };
+try { const s = JSON.parse(localStorage.getItem("tl-innst") || "{}"); if (typeof s.snarvei === "string") settings.snarvei = s.snarvei; if (typeof s.hent === "string") settings.hent = s.hent; if (typeof s.auto === "boolean") settings.auto = s.auto; } catch (e) {}
 function saveSettings() { try { localStorage.setItem("tl-innst", JSON.stringify(settings)); } catch (e) {} }
 
 function sortEntries() { entries.sort((a, b) => a.date !== b.date ? (a.date < b.date ? 1 : -1) : (a.opprettet < b.opprettet ? 1 : -1)); }
@@ -595,7 +655,8 @@ function renderAnnet() {
   exBox.appendChild(add);
 }
 function renderHint() {
-  $("f-hint").textContent = settings.auto ? "Lagres i appen og i " + "Treningslogg.csv via snarveien." : "Lagres i appen. Filkopi er slått av under Annet › Lagring.";
+  const parts = []; if (settings.auto) parts.push("Treningslogg.csv i iCloud"); if (ghOn()) parts.push("GitHub");
+  $("f-hint").textContent = parts.length ? "Lagres i appen og i " + parts.join(" og ") + "." : "Lagres bare i appen. Slå på sikkerhetskopi under Annet › Lagring.";
 }
 
 fDate.value = todayISO();
@@ -627,8 +688,15 @@ form.addEventListener("submit", async (ev) => {
     entries.push(e); sortEntries();
     fNote.value = ""; exBox.textContent = ""; annetRows = [{ navn: "", sett: "" }]; annetTittel = ""; oktTouched = false;
     renderAll(); requestPersist();
-    if (settings.auto) await sendToFile(false, fStatus, "Lagret i appen. Åpner snarveien for å skrive til filen …");
-    else say(fStatus, "Lagret i appen.");
+    let cloud = "";
+    if (ghOn()) {
+      await markDirty(); say(fStatus, "Lagret i appen. Synker med GitHub …");
+      try { await withTimeout(syncNow(), 7000); } catch (err) {}
+      cloud = ghState.dirty ? " GitHub får den når du er på nett." : " og på GitHub";
+    }
+    const where = cloud === " og på GitHub" ? "Lagret i appen og på GitHub." : "Lagret i appen." + cloud;
+    if (settings.auto) await sendToFile(false, fStatus, where + " Åpner snarveien for å skrive til filen …");
+    else say(fStatus, where);
   } catch (err) {
     say(fStatus, "Kunne ikke lagre. Prøv igjen.");
   } finally { saving = false; fSave.disabled = false; }
@@ -686,7 +754,9 @@ async function deleteEntry(e) {
   await dbDel(e.id);
   entries = entries.filter((x) => x.id !== e.id);
   if (e.iFil) { pendingDel.push({ id: e.id, date: e.date }); await kvSet("slettKo", pendingDel); }
+  ghDel.push({ id: e.id, tid: new Date().toISOString() }); await kvSet("ghSlett", ghDel);
   renderAll();
+  if (ghOn()) { await markDirty(); syncNow().catch(() => {}); }
 }
 
 /* ---------- Sikkerhetskopi: snarvei og fil ---------- */
@@ -733,36 +803,64 @@ async function testShortcut() {
   openShortcut(lines.join("\n"));
 }
 
+function backupRows() {
+  const rows = [];
+  if (!ghOn()) { /* GitHub er valgfritt og vises bare når det er koblet til */ }
+  else if (ghState.busy) rows.push(["GitHub", "", "Synker …"]);
+  else if (ghState.err) rows.push(["GitHub", "warn", ghState.err]);
+  else if (ghState.dirty) rows.push(["GitHub", "warn", "Endringer venter på å bli sendt"]);
+  else rows.push(["GitHub", "ok", ghState.last ? "Synket " + fmtWhen(ghState.last) : "Koblet til"]);
+  const n = unsentCount();
+  if (!settings.auto) rows.push(["iCloud-fil", "", "Slått av"]);
+  else if (n > 0) rows.push(["iCloud-fil", "warn", plural(n, "endring", "endringer") + " ikke sendt"]);
+  else rows.push(["iCloud-fil", "ok", entries.length ? "Alt sendt" + (lastSent ? " · " + fmtWhen(lastSent) : "") : "Klar"]);
+  return rows;
+}
 function buildBackupCard(box) {
   let st = box._status;
   if (!st) { st = el("p", "status"); st.setAttribute("role", "status"); box._status = st; }
   box.textContent = "";
+  const rows = backupRows();
+  const anyOk = rows.some((r) => r[1] === "ok"), anyOn = rows.some((r) => r[1] !== "");
+  let title;
+  if (!entries.length) title = "Ingen økter i appen";
+  else if (anyOk) title = "Loggen er sikkerhetskopiert";
+  else if (!anyOn) title = "Loggen ligger bare i appen";
+  else title = "Sikkerhetskopien er ikke oppdatert";
   const head = el("div", "backup-head"), ico = el("div", "backup-ico"), txt = el("div", "backup-txt");
-  const n = unsentCount();
-  let ok = true, title, sub;
-  if (!settings.auto) { ok = false; title = "Filkopi er slått av"; sub = "Øktene ligger bare i appen. Slå den på under Annet › Lagring."; }
-  else if (!entries.length && !pendingDel.length) { title = "Ingen økter ennå"; sub = "Hver økt du lagrer, skrives også til Treningslogg.csv."; }
-  else if (n === 0) { title = entries.length === 1 ? "Økta er sendt til filen" : "Alle " + entries.length + " økter er sendt til filen"; sub = "Treningslogg.csv" + (lastSent ? " · sist sendt " + fmtWhen(lastSent) : ""); }
-  else { ok = false; title = plural(n, "endring", "endringer") + " er ikke sendt til filen"; sub = "Trykk «Send nå» for å skrive dem til Treningslogg.csv."; }
-  if (!ok) ico.classList.add("warn");
-  ico.appendChild(icon(ok ? ICON_OK : ICON_WARN));
-  txt.appendChild(el("strong", null, title)); txt.appendChild(el("span", "small", sub));
+  const good = anyOk || (!entries.length && anyOn);
+  if (!good) ico.classList.add("warn");
+  ico.appendChild(icon(good ? ICON_OK : ICON_WARN));
+  txt.appendChild(el("strong", null, title)); txt.appendChild(el("span", "small", entries.length ? plural(entries.length, "økt", "økter") + " i appen" : "Har du en logg i iCloud, kan du hente den her."));
   head.appendChild(ico); head.appendChild(txt); box.appendChild(head);
+  const rb = el("div", "brows");
+  rows.forEach((r) => { const d = el("div", "brow"); d.appendChild(el("span", "bdot " + r[1])); d.appendChild(el("strong", null, r[0])); d.appendChild(el("span", null, r[2])); rb.appendChild(d); });
+  box.appendChild(rb);
   const btns = el("div", "btns2");
-  if (settings.auto && n > 0) {
-    const s = el("button", "btn-soft", "Send nå"); s.type = "button";
-    s.addEventListener("click", () => sendToFile(false, st).catch(() => say(st, "Noe gikk galt. Prøv igjen.")));
-    btns.appendChild(s);
-  } else {
-    const x = el("button", "btn-soft", "Eksporter Excel"); x.type = "button";
-    x.addEventListener("click", () => exportXlsx(st)); btns.appendChild(x);
+  if (ghOn()) {
+    const g = el("button", "btn-soft", "Synk nå"); g.type = "button";
+    g.addEventListener("click", () => { say(st, ""); syncNow().then((r) => say(st, r && r.pulled ? "Hentet " + plural(r.pulled, "økt", "økter") + " fra GitHub." : "Synket.")).catch(() => say(st, ghState.err)); });
+    btns.appendChild(g);
   }
-  const imp = el("button", "btn-soft", "Importer fil"); imp.type = "button";
-  imp.addEventListener("click", () => { importStatusEl = st; $("imp-file").click(); });
-  btns.appendChild(imp);
+  if (!entries.length) {
+    const h = el("button", "btn-soft", "Hent fra iCloud"); h.type = "button";
+    h.addEventListener("click", () => startFetch(st)); btns.appendChild(h);
+    const pz = el("button", "btn-soft", "Lim inn"); pz.type = "button";
+    pz.addEventListener("click", () => pasteImport(st)); btns.appendChild(pz);
+  }
+  if (settings.auto && unsentCount() > 0) {
+    const s2 = el("button", "btn-soft", "Send til fil"); s2.type = "button";
+    s2.addEventListener("click", () => sendToFile(false, st).catch(() => say(st, "Noe gikk galt. Prøv igjen.")));
+    btns.appendChild(s2);
+  }
+  if (entries.length) {
+    const imp = el("button", "btn-soft", "Importer fil"); imp.type = "button";
+    imp.addEventListener("click", () => { importStatusEl = st; $("imp-file").click(); });
+    btns.appendChild(imp);
+  }
   box.appendChild(btns); box.appendChild(st);
 }
-function renderBackup() { buildBackupCard($("backup-hist")); buildBackupCard($("backup-lag")); renderHint(); }
+function renderBackup() { buildBackupCard($("backup-hist")); buildBackupCard($("backup-lag")); renderHint(); renderGhCard(); }
 
 /* Be iOS om varig lagring */
 async function requestPersist() {
@@ -772,7 +870,7 @@ async function requestPersist() {
 async function renderStoreInfo() {
   let p = null;
   try { if (navigator.storage && navigator.storage.persisted) p = await navigator.storage.persisted(); } catch (e) {}
-  $("app-store-info").textContent = plural(entries.length, "økt", "økter") + " lagret på telefonen. Varig lagring: " + (p === true ? "på" : p === false ? "ikke bekreftet av iOS ennå" : "ukjent") + ". Filen er den sikre kopien uansett.";
+  $("app-store-info").textContent = plural(entries.length, "økt", "økter") + " lagret på telefonen. Varig lagring: " + (p === true ? "på" : p === false ? "ikke bekreftet av iOS ennå" : "ukjent") + ". Kopien i iCloud er det som beskytter loggen.";
 }
 
 /* ---------- Eksport ---------- */
@@ -814,6 +912,33 @@ $("exp-csv").addEventListener("click", () => exportCsv($("exp-status")));
 /* ---------- Import ---------- */
 let importStatusEl = $("imp-status");
 $("imp-btn").addEventListener("click", () => { importStatusEl = $("imp-status"); $("imp-file").click(); });
+let pendingPaste = false;
+function startFetch(statusEl) {
+  const name = (settings.hent || "").trim();
+  if (!name) { say(statusEl, "Skriv inn navnet på hente-snarveien under Annet › Lagring."); return; }
+  pendingPaste = true;
+  say(statusEl, "Åpner snarveien. Når den er ferdig, trykker du tilbake-pilen øverst til venstre og så «Lim inn».");
+  location.href = "shortcuts://run-shortcut?name=" + encodeURIComponent(name);
+}
+async function pasteImport(statusEl) {
+  let text = "";
+  try { text = await navigator.clipboard.readText(); }
+  catch (e) { say(statusEl, "Fikk ikke lese utklippstavlen. Trykk «Lim inn» igjen og velg «Lim inn» i boblen som dukker opp."); return; }
+  if (!text || !/dato/i.test(text)) { say(statusEl, "Utklippstavlen inneholder ikke treningsloggen. Trykk «Hent fra iCloud» først."); return; }
+  pendingPaste = false;
+  say(statusEl, "Leser loggen …");
+  try { say(statusEl, await importRows(rowsFromText(text))); }
+  catch (e) { say(statusEl, e && e.userMsg ? e.userMsg : "Kunne ikke lese loggen fra utklippstavlen."); }
+}
+$("imp-fetch").addEventListener("click", () => startFetch($("imp-status")));
+$("imp-paste").addEventListener("click", () => pasteImport($("imp-status")));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && pendingPaste) {
+    goTab("annet"); $("seg-lag").click();
+    setTimeout(() => { $("restore-card").scrollIntoView({ block: "center" }); $("imp-paste").focus(); }, 80);
+    say($("imp-status"), "Trykk «Lim inn» for å hente loggen inn i appen.");
+  }
+});
 $("imp-file").addEventListener("change", async (ev) => {
   const file = ev.target.files && ev.target.files[0]; ev.target.value = "";
   if (!file) return;
@@ -848,17 +973,22 @@ function oktKey(name) {
   return Object.keys(PLAN).find((k) => PLAN[k].navn.toLowerCase() === n) || "annet";
 }
 function signature(e) { return [e.date, e.okt, e.tittel || "", JSON.stringify((e.ovelser || []).map((o) => [o.navn, o.sett]))].join("|"); }
+function rowsFromText(text) {
+  text = String(text).replace(/^\ufeff/, "");
+  const lines = text.split(/\r?\n/);
+  const first = lines.find((l) => /dato/i.test(l)) || lines[0] || "";
+  return parseCSV(text, first.split(";").length >= first.split(",").length ? ";" : ",");
+}
 async function importFile(file) {
   let rows;
   if (/\.xlsx?$/i.test(file.name)) {
     try { await loadScript(XLSX_URL); } catch (e) { throw { userMsg: "Excel-filer trenger nett for å leses. Prøv igjen med nett, eller bruk CSV." }; }
     const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
     rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
-  } else {
-    const text = (await file.text()).replace(/^﻿/, "");
-    const first = text.split(/\r?\n/)[0] || "";
-    rows = parseCSV(text, first.split(";").length >= first.split(",").length ? ";" : ",");
-  }
+  } else rows = rowsFromText(await file.text());
+  return importRows(rows);
+}
+async function importRows(rows) {
   const hi = rows.findIndex((r) => r.some((c) => String(c).trim().toLowerCase() === "dato"));
   if (hi === -1) throw { userMsg: "Fant ingen kolonne som heter «Dato» i filen." };
   const col = {}; rows[hi].forEach((c, i) => { const k = String(c).trim().toLowerCase(); if (!(k in col)) col[k] = i; });
@@ -896,7 +1026,10 @@ async function importFile(file) {
     if (haveIds.has(e.id) || haveSig.has(sig) || (!e.ovelser.length && !e.notat)) { skipped++; return; }
     haveIds.add(e.id); haveSig.add(sig); fresh.push(e);
   });
-  if (fresh.length) { await dbPut(fresh); entries = entries.concat(fresh); sortEntries(); renderAll(); requestPersist(); }
+  if (fresh.length) {
+    await dbPut(fresh); entries = entries.concat(fresh); sortEntries(); renderAll(); requestPersist();
+    if (ghOn()) { await markDirty(); syncNow().catch(() => {}); }
+  }
   if (!fresh.length) return groups.size ? "Ingen nye økter. Alle " + plural(skipped, "økt", "økter") + " i filen finnes allerede i appen." : "Fant ingen økter i filen.";
   return "La inn " + plural(fresh.length, "økt", "økter") + "." + (skipped ? " " + plural(skipped, "økt", "økter") + " fantes fra før." : "");
 }
@@ -922,7 +1055,11 @@ function renderLib() {
   });
 }
 async function writeLib(next, msg) {
-  try { await kvSet("bibliotek", next); lib = next; renderLib(); if (fOkt.value === "annet") renderAnnet(); say(libStatus, msg); }
+  try {
+    await kvSet("bibliotek", next); lib = next; libChanged = new Date().toISOString(); await kvSet("bibliotekEndret", libChanged);
+    renderLib(); if (fOkt.value === "annet") renderAnnet(); say(libStatus, msg);
+    if (ghOn()) { await markDirty(); syncNow().catch(() => {}); }
+  }
   catch (e) { say(libStatus, "Kunne ikke lagre biblioteket. Prøv igjen."); }
 }
 function addToLib(name) {
@@ -942,12 +1079,173 @@ SEGS.forEach((s) => $(s[0]).addEventListener("click", () => {
 const sName = $("s-name"), sAuto = $("s-auto");
 sName.value = settings.snarvei; sAuto.checked = settings.auto;
 sName.addEventListener("input", () => { settings.snarvei = sName.value; saveSettings(); });
+$("s-hent").value = settings.hent;
+$("s-hent").addEventListener("input", () => { settings.hent = $("s-hent").value; saveSettings(); });
 sAuto.addEventListener("change", () => { settings.auto = sAuto.checked; saveSettings(); renderBackup(); });
 $("s-test").addEventListener("click", () => testShortcut().catch(() => say($("s-status"), "Noe gikk galt. Prøv igjen.")));
 $("s-all").addEventListener("click", () => sendToFile(true, $("s-status"), "Åpner snarveien med alle øktene. Dobbeltlinjer i filen er ufarlige.").catch(() => say($("s-status"), "Noe gikk galt. Prøv igjen.")));
 
+/* ---------- Synk med GitHub ---------- */
+const GH_JSON = "treningslogg.json", GH_CSV = "treningslogg.csv";
+const gh = { owner: "", repo: "trening-data", token: "" };
+try { const g = JSON.parse(localStorage.getItem("tl-gh") || "{}"); ["owner", "repo", "token"].forEach((k) => { if (typeof g[k] === "string") gh[k] = g[k]; }); } catch (e) {}
+function saveGh() { try { localStorage.setItem("tl-gh", JSON.stringify(gh)); } catch (e) {} }
+const ghState = { dirty: false, last: "", err: "", busy: false, remote: null };
+let ghDel = [], libChanged = "", changeSeq = 0;
+function ghOn() { return !!(gh.owner && gh.repo && gh.token); }
+function withTimeout(p, ms) { return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("tid")), ms))]); }
+function b64enc(str) { const b = new TextEncoder().encode(str); let bin = ""; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(bin); }
+function b64dec(str) { const bin = atob(String(str).replace(/\s/g, "")); const b = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i); return new TextDecoder().decode(b); }
+async function ghFetch(path, opts) {
+  opts = opts || {};
+  const url = "https://api.github.com/repos/" + encodeURIComponent(gh.owner.trim()) + "/" + encodeURIComponent(gh.repo.trim()) + (path ? "/contents/" + path : "");
+  const headers = Object.assign({ "Accept": "application/vnd.github+json", "Authorization": "Bearer " + gh.token.trim(), "X-GitHub-Api-Version": "2022-11-28" }, opts.headers || {});
+  try { return await fetch(url, Object.assign({}, opts, { headers, cache: "no-store" })); }
+  catch (e) { const err = new Error("nett"); err.kind = "nett"; throw err; }
+}
+function httpErr(res) { const e = new Error("http " + res.status); e.status = res.status; return e; }
+async function ghGet(path) {
+  const r = await ghFetch(path);
+  if (r.status === 404) return { sha: null, text: null };
+  if (!r.ok) throw httpErr(r);
+  const j = await r.json();
+  if (j.encoding === "base64" && j.content) return { sha: j.sha, text: b64dec(j.content) };
+  const raw = await ghFetch(path, { headers: { "Accept": "application/vnd.github.raw" } });
+  if (!raw.ok) throw httpErr(raw);
+  return { sha: j.sha, text: await raw.text() };
+}
+async function ghPut(path, text, sha, message) {
+  const body = { message, content: b64enc(text) }; if (sha) body.sha = sha;
+  const r = await ghFetch(path, { method: "PUT", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } });
+  if (!r.ok) throw httpErr(r);
+}
+function ghMessage(e) {
+  if (e && e.kind === "nett") return "Ingen nett. Synker når du er på nett igjen.";
+  if (e && e.kind === "fil") return "Filen i repoet kan ikke leses. Ingenting er endret.";
+  if (e && e.kind === "konflikt") return "Kunne ikke synke akkurat nå. Prøver igjen senere.";
+  if (e && e.message === "tid") return "GitHub svarer tregt. Prøver igjen senere.";
+  const s = e && e.status;
+  if (s === 401) return "Nøkkelen er ugyldig eller utløpt. Lag en ny og koble til på nytt.";
+  if (s === 403) return "Nøkkelen mangler skrivetilgang. Sett Contents til Read and write.";
+  if (s === 404) return "Fant ikke repoet. Sjekk navnet, og at nøkkelen har tilgang til det.";
+  return "Synk feilet" + (s ? " (feil " + s + ")" : "") + ". Prøver igjen senere.";
+}
+function cleanEntry(e) {
+  const o = { id: e.id, date: e.date, okt: e.okt, ovelser: e.ovelser || [], notat: e.notat || "", opprettet: e.opprettet || "" };
+  if (e.tittel) o.tittel = e.tittel; if (e.sted) o.sted = e.sted; return o;
+}
+async function markDirty() { changeSeq++; ghState.dirty = true; await kvSet("ghDirty", true); renderBackup(); }
+
+let syncing = null;
+function syncNow() {
+  if (!ghOn() || !ready) return Promise.resolve(null);
+  if (!syncing) syncing = doSync().finally(() => { syncing = null; });
+  return syncing;
+}
+async function doSync() {
+  const seq = changeSeq, delSnap = ghDel.slice();
+  ghState.busy = true; ghState.err = ""; renderBackup();
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const remote = await ghGet(GH_JSON);
+      let data = { okter: [], slettet: [], bibliotek: [], bibliotekEndret: "" };
+      if (remote.text && remote.text.trim()) {
+        let p; try { p = JSON.parse(remote.text); } catch (e) { throw Object.assign(new Error("fil"), { kind: "fil" }); }
+        if (!p || !Array.isArray(p.okter)) throw Object.assign(new Error("fil"), { kind: "fil" });
+        data = Object.assign(data, p);
+      }
+      const tomb = new Map((Array.isArray(data.slettet) ? data.slettet : []).filter((t) => t && t.id).map((t) => [t.id, t]));
+      const tombBefore = tomb.size;
+      delSnap.forEach((d) => { if (!tomb.has(d.id)) tomb.set(d.id, { id: d.id, tid: d.tid }); });
+      const byId = new Map();
+      data.okter.forEach((e) => { if (e && e.id && !tomb.has(e.id)) byId.set(e.id, e); });
+      let added = 0;
+      entries.forEach((e) => { if (!tomb.has(e.id) && !byId.has(e.id)) { byId.set(e.id, cleanEntry(e)); added++; } });
+      let bib = Array.isArray(data.bibliotek) ? data.bibliotek.filter((x) => typeof x === "string" && x) : [], bibT = data.bibliotekEndret || "", bibPush = false;
+      if (libChanged && libChanged > bibT) { bib = lib.slice(); bibT = libChanged; bibPush = true; }
+      const merged = Array.from(byId.values()).sort((a, b) => a.date !== b.date ? (a.date < b.date ? -1 : 1) : (a.opprettet < b.opprettet ? -1 : 1));
+      if (!remote.sha || added > 0 || tomb.size !== tombBefore || bibPush) {
+        const out = { app: "treningslogg", versjon: 1, oppdatert: new Date().toISOString(), okter: merged, slettet: Array.from(tomb.values()), bibliotek: bib, bibliotekEndret: bibT };
+        try { await ghPut(GH_JSON, JSON.stringify(out, null, 1), remote.sha, "Treningslogg: " + plural(merged.length, "økt", "økter")); }
+        catch (e) { if (e.status === 409 || e.status === 422) continue; throw e; }
+        try {
+          const csv = "﻿" + [csvLine(CSV_HEAD)].concat(merged.flatMap(entryRows).map(csvLine)).join("\r\n");
+          const c = await ghGet(GH_CSV);
+          if (c.text !== csv && c.text !== csv.slice(1)) await ghPut(GH_CSV, csv, c.sha, "Oppdater CSV");
+        } catch (e) { /* CSV-kopien er en bonus; JSON er det som teller */ }
+      }
+      /* Legg inn det som mangler her, og fjern det som er slettet andre steder */
+      const have = new Set(entries.map((e) => e.id));
+      const toAdd = merged.filter((e) => !have.has(e.id)).map((e) => Object.assign({}, e, { iFil: true }));
+      const toDel = entries.filter((e) => tomb.has(e.id));
+      if (toAdd.length) await dbPut(toAdd);
+      for (const e of toDel) await dbDel(e.id);
+      if (toAdd.length || toDel.length) { entries = entries.filter((e) => !tomb.has(e.id)).concat(toAdd); sortEntries(); }
+      if (!bibPush && bibT && bibT > libChanged && JSON.stringify(bib) !== JSON.stringify(lib)) {
+        lib = bib; libChanged = bibT; await kvSet("bibliotek", lib); await kvSet("bibliotekEndret", libChanged); renderLib();
+      }
+      ghDel = ghDel.filter((d) => !delSnap.some((x) => x.id === d.id)); await kvSet("ghSlett", ghDel);
+      if (changeSeq === seq) { ghState.dirty = false; await kvSet("ghDirty", false); }
+      ghState.last = new Date().toISOString(); await kvSet("ghSist", ghState.last);
+      ghState.remote = merged.length;
+      if (toAdd.length || toDel.length) renderAll();
+      if (changeSeq !== seq) setTimeout(() => syncNow().catch(() => {}), 500);
+      return { pulled: toAdd.length, removed: toDel.length };
+    }
+    throw Object.assign(new Error("konflikt"), { kind: "konflikt" });
+  } catch (e) {
+    ghState.err = ghMessage(e); throw e;
+  } finally { ghState.busy = false; renderBackup(); }
+}
+
+function renderGhCard() {
+  const on = ghOn();
+  $("gh-off").hidden = on; $("gh-on").hidden = !on; $("gh-guide").hidden = on;
+  if (on) {
+    $("gh-info").textContent = "Koblet til " + gh.owner + "/" + gh.repo + ". " +
+      (ghState.busy ? "Synker …" : ghState.err ? ghState.err : ghState.dirty ? "Endringer venter på å bli sendt." : ghState.last ? "Sist synket " + fmtWhen(ghState.last) + (ghState.remote != null ? " · " + plural(ghState.remote, "økt", "økter") + " i repoet." : ".") : "");
+  }
+}
+$("gh-owner").value = gh.owner; $("gh-repo").value = gh.repo || "trening-data";
+$("gh-connect").addEventListener("click", async () => {
+  const st = $("gh-status");
+  const owner = $("gh-owner").value.trim(), repo = $("gh-repo").value.trim(), token = $("gh-token").value.trim();
+  if (!owner || !repo || !token) { say(st, "Fyll inn brukernavn, repo og nøkkel."); return; }
+  if (!ready) { say(st, "Vent litt, appen laster fortsatt."); return; }
+  const btn = $("gh-connect"); btn.disabled = true; say(st, "Kobler til …");
+  const prev = Object.assign({}, gh);
+  gh.owner = owner; gh.repo = repo; gh.token = token;
+  let saved = false;
+  try {
+    const r = await ghFetch("");
+    if (!r.ok) throw httpErr(r);
+    const info = await r.json();
+    if (!info.private) { Object.assign(gh, prev); say(st, "Repoet er offentlig. Gjør det privat først (Settings › Danger Zone › Change visibility), så ingen andre kan se treningsloggen din."); return; }
+    saveGh(); saved = true; $("gh-token").value = "";
+    await markDirty();
+    const res = await syncNow();
+    say(st, res && res.pulled ? "Koblet til. Hentet " + plural(res.pulled, "økt", "økter") + " fra GitHub." : "Koblet til. Loggen er lagret i repoet.");
+  } catch (e) {
+    if (!saved) Object.assign(gh, prev);
+    say(st, saved ? "Koblet til, men første synk feilet: " + ghMessage(e) : ghMessage(e));
+  } finally { btn.disabled = false; renderBackup(); }
+});
+$("gh-sync").addEventListener("click", () => {
+  const st = $("gh-status"); say(st, "");
+  syncNow().then((r) => say(st, r && r.pulled ? "Hentet " + plural(r.pulled, "økt", "økter") + " fra GitHub." : "Synket.")).catch(() => say(st, ghState.err));
+});
+$("gh-disc").addEventListener("click", () => {
+  const b = $("gh-disc");
+  if (!b.classList.contains("confirm")) { b.classList.add("confirm"); b.textContent = "Trykk igjen for å koble fra"; setTimeout(() => { b.classList.remove("confirm"); b.textContent = "Koble fra"; }, 4000); return; }
+  b.classList.remove("confirm"); b.textContent = "Koble fra";
+  gh.token = ""; saveGh(); ghState.err = ""; renderBackup();
+  say($("gh-status"), "Koblet fra. Øktene ligger fortsatt i appen og i repoet.");
+});
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && ghOn()) syncNow().catch(() => {}); });
+window.addEventListener("online", () => { if (ghOn()) syncNow().catch(() => {}); });
+
 /* ---------- Oppstart ---------- */
-function renderAll() { renderProgram(); renderTiles(); renderFilter(); renderEntries(); renderBackup(); renderStoreInfo(); if (!exBox.contains(document.activeElement)) { exBox.textContent = ""; renderFields(); } }
+function renderAll() { renderProgram(); renderTiles(); renderFilter(); renderEntries(); renderBackup(); renderStoreInfo(); if (!exBox.contains(document.activeElement)) renderFields(); }
 
 const standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
 $("safari-banner").hidden = standalone;
@@ -958,13 +1256,15 @@ fSave.disabled = true;
 (async () => {
   try {
     idb = await openDb();
-    const [all, l, d, h, s] = await Promise.all([dbAll(), kvGet("bibliotek"), kvGet("slettKo"), kvGet("header"), kvGet("sistSendt")]);
+    const [all, l, d, h, s, gd, gs, gx, le] = await Promise.all([dbAll(), kvGet("bibliotek"), kvGet("slettKo"), kvGet("header"), kvGet("sistSendt"), kvGet("ghDirty"), kvGet("ghSist"), kvGet("ghSlett"), kvGet("bibliotekEndret")]);
+    ghState.dirty = !!gd; ghState.last = gs || ""; ghDel = Array.isArray(gx) ? gx : []; libChanged = le || "";
     entries = Array.isArray(all) ? all : []; sortEntries();
     lib = Array.isArray(l) ? l.filter((x) => typeof x === "string" && x) : [];
     pendingDel = Array.isArray(d) ? d : []; headerSent = !!h; lastSent = s || "";
     ready = true; fSave.disabled = false;
     renderAll(); renderLib();
     if (entries.length) requestPersist();
+    if (ghOn()) syncNow().catch(() => {});
   } catch (e) {
     say(histStatus, "Lagringen på telefonen kunne ikke åpnes. Last appen på nytt.");
     say(fStatus, "Lagringen på telefonen kunne ikke åpnes. Last appen på nytt.");
