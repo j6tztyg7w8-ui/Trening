@@ -659,7 +659,7 @@ function renderAnnet() {
     pl.appendChild(inp);
     sel.addEventListener("change", () => { row.navn = sel.value; const l2 = row.navn ? lastSettFor(row.navn) : ""; ls.textContent = l2 ? "Sist: " + l2 : ""; });
     const rm = el("button", "btn-ghost", "Fjern"); rm.type = "button"; rm.setAttribute("aria-label", "Fjern øvelse " + (i + 1));
-    rm.addEventListener("click", () => { annetRows.splice(i, 1); if (!annetRows.length) annetRows.push({ navn: "", sett: "" }); renderAnnet(); });
+    rm.addEventListener("click", () => { annetRows.splice(i, 1); if (!annetRows.length) annetRows.push({ navn: "", sett: "" }); renderAnnet(); saveDraft(); });
     wrap.appendChild(sl); wrap.appendChild(pl); wrap.appendChild(rm); exBox.appendChild(wrap);
   });
   const add = el("button", "btn-soft", "+ Legg til øvelse"); add.type = "button"; add.style.justifySelf = "start";
@@ -685,12 +685,53 @@ function setEditMode(on) {
   fSave.textContent = on ? "Lagre endringer" : "Lagre økt";
   $("f-cancel").hidden = !on;
 }
+/* ---------- Kladd: alt du skriver lagres fortløpende ---------- */
+let draftOn = false;
+function saveDraft() {
+  if (!draftOn) return;
+  const fields = {}; exBox.querySelectorAll("input[data-navn]").forEach((i) => { if (i.value) fields[i.dataset.navn] = i.value; });
+  const empty = !Object.keys(fields).length && !fNote.value.trim() && !fSted.value.trim() && !annetRows.some((r) => r.navn || r.sett) && !editingId;
+  try {
+    if (empty) localStorage.removeItem("tl-kladd");
+    else localStorage.setItem("tl-kladd", JSON.stringify({ date: fDate.value, okt: fOkt.value, sted: fSted.value, notat: fNote.value, fields, annetRows, annetTittel, editingId, editExtra, tid: Date.now() }));
+  } catch (e) {}
+}
+function clearDraft() { try { localStorage.removeItem("tl-kladd"); } catch (e) {} }
+function restoreDraft() {
+  let d = null; try { d = JSON.parse(localStorage.getItem("tl-kladd") || "null"); } catch (e) {}
+  if (!d || !d.okt || !PLAN[d.okt]) return false;
+  if (d.editingId && !entries.some((x) => x.id === d.editingId)) d.editingId = null;
+  editingId = d.editingId || null; editExtra = Array.isArray(d.editExtra) ? d.editExtra : [];
+  oktTouched = true; fDate.value = d.date || todayISO(); fOkt.value = d.okt;
+  fSted.value = d.sted || ""; fNote.value = d.notat || "";
+  annetRows = Array.isArray(d.annetRows) && d.annetRows.length ? d.annetRows : [{ navn: "", sett: "" }];
+  annetTittel = d.annetTittel || "";
+  exBox.textContent = ""; renderFields();
+  exBox.querySelectorAll("input[data-navn]").forEach((i) => { if (d.fields && d.fields[i.dataset.navn]) i.value = d.fields[i.dataset.navn]; });
+  setEditMode(!!editingId);
+  say(fStatus, "Kladden din er hentet tilbake. Trykk «" + fSave.textContent + "» når økta er ferdig.");
+  return true;
+}
+form.addEventListener("input", saveDraft);
+form.addEventListener("change", saveDraft);
+/* Retur på tastaturet hopper til neste felt i stedet for å lagre økta */
+form.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Enter" || ev.target.tagName === "TEXTAREA" || ev.target.tagName === "BUTTON") return;
+  ev.preventDefault();
+  const all = Array.from(form.querySelectorAll("input, select, textarea")).filter((x) => !x.disabled && x.offsetParent !== null);
+  const next = all[all.indexOf(ev.target) + 1];
+  if (next) next.focus(); else ev.target.blur();
+});
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveDraft(); });
+window.addEventListener("pagehide", saveDraft);
+
 function resetForm() {
   editingId = null; editExtra = []; oktTouched = false;
   fDate.value = todayISO(); fOkt.value = defaultKey(fDate.value);
   fSted.value = ""; fNote.value = ""; annetRows = [{ navn: "", sett: "" }];
   annetTittel = (fOkt.value === "annet" && weekIdx(new Date()) === 0) ? "Performance Strength" : "";
   exBox.textContent = ""; setEditMode(false); renderFields();
+  clearDraft();
 }
 function startEdit(e) {
   editingId = e.id; oktTouched = true;
@@ -704,7 +745,7 @@ function startEdit(e) {
   } else editExtra = ov.map((o) => o.navn);
   exBox.textContent = ""; renderFields();
   if (fOkt.value !== "annet") exBox.querySelectorAll("input").forEach((inp) => { const o = ov.find((x) => x.navn === inp.dataset.navn); inp.value = o ? o.sett || "" : ""; });
-  setEditMode(true); say(fStatus, "");
+  setEditMode(true); say(fStatus, ""); saveDraft();
   goTab("logg"); window.scrollTo(0, 0);
 }
 $("f-cancel").addEventListener("click", () => { resetForm(); say(fStatus, "Redigeringen er avbrutt."); goTab("historikk"); });
@@ -1351,6 +1392,8 @@ fSave.disabled = true;
     pendingDel = Array.isArray(d) ? d : []; headerSent = !!h; lastSent = s || "";
     ready = true; fSave.disabled = false;
     renderAll(); renderLib();
+    draftOn = true;
+    if (restoreDraft()) { renderLib(); }
     if (entries.length) requestPersist();
     if (ghOn()) syncNow().catch(() => {});
   } catch (e) {
