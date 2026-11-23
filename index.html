@@ -574,9 +574,7 @@ function renderProgram() {
     const c = el("div", "card glass other");
     c.appendChild(el("span", "tag", "I dag · mandag")); c.appendChild(el("h2", null, "Performance Strength"));
     c.appendChild(el("p", "note", "Bein og skulderpress i timen. Logg den under «Annet» med øvelser fra biblioteket."));
-    const a = el("button", "btn", "Logg timen"); a.type = "button";
-    a.addEventListener("click", () => { fOkt.value = "annet"; oktTouched = true; annetTittel = "Performance Strength"; exBox.textContent = ""; renderFields(); goTab("logg"); });
-    c.appendChild(a); box.appendChild(c);
+    box.appendChild(c);
   }
   ORDER.forEach((key) => {
     const p = planOf(key), d = el("details", "session glass " + p.type); d.id = "ses-" + key;
