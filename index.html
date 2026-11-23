@@ -85,6 +85,13 @@ p { margin: 0; }
 .tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--c, var(--muted)); }
 .push { --c: var(--push); } .pull { --c: var(--pull); } .legs { --c: var(--legs); } .cardio { --c: var(--cardio); } .other { --c: var(--other); } .rest { --c: var(--rest); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--rest)); flex: none; }
+.tempo-box { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 12px; border-radius: 14px; background: rgba(251,146,60,0.12); border: 1px solid rgba(251,146,60,0.3); }
+.tempo-box .tl { font-size: 14px; font-weight: 600; color: var(--accent); }
+.tempo-box .tv { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.lopgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.lopgrid div { display: grid; padding: 8px 10px; border-radius: 12px; background: var(--field); }
+.lopgrid b { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.lopgrid span { font-size: 12px; color: var(--muted); }
 .banner { border-radius: 18px; padding: 12px 14px; background: var(--warn-bg); color: var(--ink); font-size: 14px; border: 1px solid rgba(180,83,9,0.25); }
 
 /* Fanelinje */
@@ -437,17 +444,25 @@ const PLAN = {
   "bein": { navn: "Bein", type: "legs", tag: "Erstattes av mandagstimen", ovelser: [
     ["Leg press", "3 × 8–10", "100 kg"], ["Bulgarian split squat", "3 × 8–10", "10 kg"], ["Hip thrust", "3 × 8–10", "50 kg"],
     ["Leg curl", "3 × 10–12", "35–40 kg"], ["Leg extension", "3 × 12", "35–40 kg"], ["Tåhev", "3 × 12–15", "60 kg"], ["Kabelcrunch eller planke", "3 sett", "–"]] },
-  "cardio": { navn: "Cardio", type: "cardio", tag: "Rolig løp eller gruppetime", ovelser: [["Aktivitet", "", ""], ["Tid eller distanse", "", ""]] },
+  "loping": { navn: "Løping", type: "cardio", tag: "Inne eller ute", ovelser: [] },
+  /* Gammel økttype. Gamle cardio-økter gjøres automatisk om til Løping. */
+  "cardio": { navn: "Cardio", type: "cardio", tag: "", hidden: true, ovelser: [["Aktivitet", "", ""], ["Tid eller distanse", "", ""]] },
   "annet": { navn: "Annet", type: "other", tag: "Fra øvelsesbiblioteket", ovelser: [] }
 };
-const ORDER = ["push-a", "pull-a", "push-b", "pull-b", "bein", "cardio"];
+const ORDER = ["push-a", "pull-a", "push-b", "pull-b", "bein", "loping"];
 /* Uka, mandag først. key = økta den dagen, null = hvile */
 const WEEK = [
   { d: "Man", key: "annet", w: "Perf." }, { d: "Tir", key: null, w: "Hvile" }, { d: "Ons", key: "pull-a", w: "Pull A" },
-  { d: "Tor", key: "push-a", w: "Push A" }, { d: "Fre", key: "pull-b", w: "Pull B" }, { d: "Lør", key: "push-b", w: "Push B" }, { d: "Søn", key: "cardio", w: "Cardio" }
+  { d: "Tor", key: "push-a", w: "Push A" }, { d: "Fre", key: "pull-b", w: "Pull B" }, { d: "Lør", key: "push-b", w: "Push B" }, { d: "Søn", key: "loping", w: "Løping" }
 ];
 const SUGGEST = ["Markløft", "Knebøy", "Rumensk markløft", "Utfall", "Pull-ups", "Dips", "Kettlebell swing", "Farmers walk", "Push-ups", "Planke", "Arnold press", "Kabelflyes", "Goblet squat", "Step-ups"];
-const CARDIO_FIELDS = /^(Aktivitet|Tid eller distanse)$/;
+const CARDIO_FIELDS = /^(Aktivitet|Tid eller distanse|Tid|Distanse|Tempo)$/;
+/* De tre gamle cardio-øktene, med inne/ute og notat slik de skal bli */
+const LOP_FIX = {
+  "8kgxnoqq71yakkuqghaa": { ute: true, notat: "" },
+  "ymkystj511j9xg7y7x0h": { ute: false, notat: "Gruppetime Indoor running. Tre grupper med intervaller: 2 min, 1 min og 30 sek." },
+  "813ueta863oupvvh3vr1": { ute: false, notat: "Tredemølle. Stigning: 1%. 2 min ish oppvarming og 2 min ish nedkjøling." }
+};
 const CSV_HEAD = ["ID", "Dato", "Økt", "Navn på økt", "Sted", "Øvelse", "Sett", "Notat", "Lagret"];
 const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
 /* ===================================================================== */
@@ -467,7 +482,20 @@ function fmtWhen(s) {
   return iso(d) === todayISO() ? "i dag " + t : d.toLocaleDateString("nb-NO", { day: "numeric", month: "short" }) + " " + t;
 }
 function planOf(key) { return PLAN[key] || { navn: key || "", type: "other", ovelser: [] }; }
-function entryTitle(e) { return (e.okt === "annet" && e.tittel) ? "Annet · " + e.tittel : planOf(e.okt).navn; }
+function entryTitle(e) { if (e.okt === "loping") return "Løping" + (e.tittel ? " · " + e.tittel : ""); return (e.okt === "annet" && e.tittel) ? "Annet · " + e.tittel : planOf(e.okt).navn; }
+/* ---------- Løping: tid, distanse og tempo ---------- */
+function parseTid(s) {
+  s = String(s || "").trim().replace(/[.,]/g, ":"); if (!s) return null;
+  const p = s.split(":").map((x) => x.trim()); if (p.some((x) => !/^\d+$/.test(x))) return null;
+  let sec = 0;
+  if (p.length === 1) sec = +p[0] * 60; else if (p.length === 2) sec = +p[0] * 60 + +p[1]; else if (p.length === 3) sec = +p[0] * 3600 + +p[1] * 60 + +p[2]; else return null;
+  return sec > 0 ? sec : null;
+}
+function parseKm(s) { const m = String(s || "").replace(",", ".").match(/\d+(\.\d+)?/); const v = m ? parseFloat(m[0]) : NaN; return v > 0 ? v : null; }
+function fmtTid(sec) { sec = Math.round(sec); const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s2 = sec % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s2).padStart(2, "0"); }
+function fmtKm(km) { return (Number.isInteger(km) ? String(km) : km.toFixed(2).replace(".", ",")) + " km"; }
+function tempoTxt(sec, km) { return fmtTid(sec / km) + " min/km"; }
+function lopData(e) { const g = (n) => ((e.ovelser || []).find((o) => o && o.navn === n) || {}).sett || ""; return { tid: g("Tid"), km: g("Distanse"), tempo: g("Tempo") }; }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function say(elm, text) { elm.textContent = text || ""; }
 function plural(n, en, fl) { return n + " " + (n === 1 ? en : fl); }
@@ -586,10 +614,14 @@ function renderProgram() {
     d.open = (d.id in open) ? open[d.id] : key === todayKey;
     const s = el("summary"); s.appendChild(el("span", "bar"));
     const t = el("span", "sum-txt"); t.appendChild(el("strong", null, p.navn));
-    t.appendChild(el("span", "small", (key === todayKey ? "I dag · " : "") + p.tag + (key === "cardio" ? "" : " · " + p.ovelser.length + " øvelser")));
+    t.appendChild(el("span", "small", (key === todayKey ? "I dag · " : "") + p.tag + (key === "loping" ? "" : " · " + p.ovelser.length + " øvelser")));
     s.appendChild(t); s.appendChild(chevron()); d.appendChild(s);
     const body = el("div", "session-body");
-    if (key === "cardio") body.appendChild(el("p", "note", "40–60 minutter rolig løping, eller en gruppetime som Indoor running. Holder kondisen fra maratonet ved like og hjelper på fettprosenten."));
+    if (key === "loping") {
+      body.appendChild(el("p", "note", "40–60 minutter rolig løping, inne eller ute. Holder kondisen fra maratonet ved like og hjelper på fettprosenten. Logg tid og distanse, så regner appen ut tempoet."));
+      const lastRun = entries.find((e) => e.okt === "loping");
+      if (lastRun) { const d = lopData(lastRun); body.appendChild(el("p", "note", "Sist: " + [lastRun.tittel, d.tid, d.km, d.tempo].filter(Boolean).join(" · "))); }
+    }
     else {
       p.ovelser.forEach((o) => {
         const r = el("div", "ex-row");
@@ -606,12 +638,43 @@ function renderProgram() {
 /* ---------- Logg ---------- */
 const form = $("log-form"), fDate = $("f-date"), fOkt = $("f-okt"), fNote = $("f-note"), fSted = $("f-sted");
 const fSave = $("f-save"), fStatus = $("f-status"), exBox = $("ex-fields");
-Object.keys(PLAN).forEach((k) => { const o = el("option", null, PLAN[k].navn); o.value = k; fOkt.appendChild(o); });
-function defaultKey(s) { return WEEK[weekIdx(parseISO(s))].key || "cardio"; }
+Object.keys(PLAN).forEach((k) => { if (PLAN[k].hidden) return; const o = el("option", null, PLAN[k].navn); o.value = k; fOkt.appendChild(o); });
+function defaultKey(s) { return WEEK[weekIdx(parseISO(s))].key || "loping"; }
+let lopInne = true;
+function renderLoping() {
+  const old = {}; exBox.querySelectorAll("input[data-navn]").forEach((i) => { old[i.dataset.navn] = i.value; });
+  exBox.textContent = "";
+  const seg = el("div", "seg"); seg.setAttribute("role", "radiogroup"); seg.setAttribute("aria-label", "Inne eller ute");
+  ["Inne", "Ute"].forEach((v) => {
+    const b = el("button", null, v); b.type = "button"; b.setAttribute("role", "radio");
+    const on = (v === "Inne") === lopInne; b.setAttribute("aria-checked", on ? "true" : "false"); b.setAttribute("aria-selected", on ? "true" : "false");
+    b.addEventListener("click", () => { lopInne = v === "Inne"; renderLoping(); saveDraft(); });
+    seg.appendChild(b);
+  });
+  exBox.appendChild(seg);
+  const row = el("div", "row2");
+  [["Tid", "Tid", "f.eks. 42.54"], ["Distanse", "Distanse (km)", "f.eks. 6,01"]].forEach((f) => {
+    const lab = el("label"); lab.setAttribute("for", "lp-" + f[0]); lab.appendChild(document.createTextNode(f[1]));
+    const i = el("input"); i.type = "text"; i.id = "lp-" + f[0]; i.dataset.navn = f[0]; i.inputMode = "decimal"; i.autocomplete = "off"; i.placeholder = f[2]; i.value = old[f[0]] || "";
+    i.addEventListener("input", updTempo); lab.appendChild(i); row.appendChild(lab);
+  });
+  exBox.appendChild(row);
+  const tb = el("div", "tempo-box"); tb.id = "lp-tempo"; exBox.appendChild(tb);
+  const last = entries.find((e) => e.okt === "loping" && e.id !== editingId && (e.tittel || "") === (lopInne ? "Inne" : "Ute"));
+  if (last) { const d = lopData(last); exBox.appendChild(el("p", "small", "Sist (" + (lopInne ? "inne" : "ute") + "): " + [d.tid, d.km, d.tempo].filter(Boolean).join(" · "))); }
+  exBox.appendChild(el("p", "small", "Tid skrives som minutter.sekunder, f.eks. 42.54, eller t:mm:ss for lange turer."));
+  updTempo();
+}
+function updTempo() {
+  const tb = $("lp-tempo"); if (!tb) return;
+  const sec = parseTid($("lp-Tid").value), km = parseKm($("lp-Distanse").value);
+  tb.textContent = ""; tb.appendChild(el("span", "tl", "Tempo")); tb.appendChild(el("span", "tv", sec && km ? tempoTxt(sec, km) : "–"));
+}
 
 function renderFields() {
   const key = fOkt.value;
   if (key === "annet") { renderAnnet(); return; }
+  if (key === "loping") { renderLoping(); return; }
   const old = {}; exBox.querySelectorAll("input").forEach((i) => { old[i.dataset.navn] = i.value; });
   exBox.textContent = "";
   planOf(key).ovelser.forEach((o, i) => {
@@ -694,7 +757,7 @@ function saveDraft() {
   const empty = !Object.keys(fields).length && !fNote.value.trim() && !fSted.value.trim() && !annetRows.some((r) => r.navn || r.sett) && !editingId;
   try {
     if (empty) localStorage.removeItem("tl-kladd");
-    else localStorage.setItem("tl-kladd", JSON.stringify({ date: fDate.value, okt: fOkt.value, sted: fSted.value, notat: fNote.value, fields, annetRows, annetTittel, editingId, editExtra, tid: Date.now() }));
+    else localStorage.setItem("tl-kladd", JSON.stringify({ date: fDate.value, okt: fOkt.value, sted: fSted.value, notat: fNote.value, fields, annetRows, annetTittel, editingId, editExtra, lopInne, tid: Date.now() }));
   } catch (e) {}
 }
 function clearDraft() { try { localStorage.removeItem("tl-kladd"); } catch (e) {} }
@@ -706,9 +769,10 @@ function restoreDraft() {
   oktTouched = true; fDate.value = d.date || todayISO(); fOkt.value = d.okt;
   fSted.value = d.sted || ""; fNote.value = d.notat || "";
   annetRows = Array.isArray(d.annetRows) && d.annetRows.length ? d.annetRows : [{ navn: "", sett: "" }];
-  annetTittel = d.annetTittel || "";
+  annetTittel = d.annetTittel || ""; lopInne = d.lopInne !== false;
   exBox.textContent = ""; renderFields();
   exBox.querySelectorAll("input[data-navn]").forEach((i) => { if (d.fields && d.fields[i.dataset.navn]) i.value = d.fields[i.dataset.navn]; });
+  updTempo();
   setEditMode(!!editingId);
   say(fStatus, "Kladden din er hentet tilbake. Trykk «" + fSave.textContent + "» når økta er ferdig.");
   return true;
@@ -739,13 +803,15 @@ function startEdit(e) {
   fDate.value = e.date; fOkt.value = PLAN[e.okt] ? e.okt : "annet";
   fSted.value = e.sted || ""; fNote.value = e.notat || "";
   const ov = (e.ovelser || []).filter((o) => o && o.navn);
-  if (fOkt.value === "annet") {
+  if (fOkt.value === "loping") { lopInne = e.tittel !== "Ute"; editExtra = []; }
+  else if (fOkt.value === "annet") {
     annetTittel = e.tittel || "";
     annetRows = ov.length ? ov.map((o) => ({ navn: o.navn, sett: o.sett || "" })) : [{ navn: "", sett: "" }];
     editExtra = [];
   } else editExtra = ov.map((o) => o.navn);
   exBox.textContent = ""; renderFields();
-  if (fOkt.value !== "annet") exBox.querySelectorAll("input").forEach((inp) => { const o = ov.find((x) => x.navn === inp.dataset.navn); inp.value = o ? o.sett || "" : ""; });
+  if (fOkt.value !== "annet") exBox.querySelectorAll("input[data-navn]").forEach((inp) => { const o = ov.find((x) => x.navn === inp.dataset.navn); inp.value = o ? (inp.dataset.navn === "Distanse" ? String(o.sett || "").replace(/\s*km$/, "") : o.sett || "") : ""; });
+  updTempo();
   setEditMode(true); say(fStatus, ""); saveDraft();
   goTab("logg"); window.scrollTo(0, 0);
 }
@@ -757,8 +823,12 @@ form.addEventListener("submit", async (ev) => {
   if (ev.submitter !== fSave) { saveDraft(); return; }
   if (!ready || saving) return;
   if (!fDate.value) { say(fStatus, "Velg en dato."); return; }
-  const ovelser = [], isAnnet = fOkt.value === "annet";
-  if (isAnnet) {
+  const ovelser = [], isAnnet = fOkt.value === "annet", isLop = fOkt.value === "loping";
+  if (isLop) {
+    const sec = parseTid($("lp-Tid").value), km = parseKm($("lp-Distanse").value);
+    if (!sec || !km) { say(fStatus, "Fyll inn tid (f.eks. 42.54) og distanse (f.eks. 6,01)."); return; }
+    ovelser.push({ navn: "Tid", sett: fmtTid(sec) }, { navn: "Distanse", sett: fmtKm(km) }, { navn: "Tempo", sett: tempoTxt(sec, km) });
+  } else if (isAnnet) {
     let missing = false;
     annetRows.forEach((r) => { const v = String(r.sett || "").trim(); if (r.navn && v) ovelser.push({ navn: r.navn, sett: v.slice(0, 300) }); else if (!r.navn && v) missing = true; });
     if (missing) { say(fStatus, "Velg øvelse for alle sett du har fylt inn."); return; }
@@ -771,6 +841,7 @@ form.addEventListener("submit", async (ev) => {
   if (editingId && !old) { resetForm(); say(fStatus, "Fant ikke økta du redigerte. Den kan være slettet."); return; }
   const e = { id: uid(), date: fDate.value, okt: fOkt.value, ovelser, notat, opprettet: old ? old.opprettet : new Date().toISOString(), iFil: false };
   if (isAnnet && annetTittel.trim()) e.tittel = annetTittel.trim().slice(0, 60);
+  if (isLop) e.tittel = lopInne ? "Inne" : "Ute";
   if (fSted.value.trim()) e.sted = fSted.value.trim().slice(0, 60);
   saving = true; fSave.disabled = true; say(fStatus, "Lagrer …");
   try {
@@ -808,7 +879,11 @@ function exerciseNames() {
   entries.forEach((e) => (e.ovelser || []).forEach((o) => { if (o && o.navn && o.sett && !CARDIO_FIELDS.test(o.navn)) count[o.navn] = (count[o.navn] || 0) + 1; }));
   return Object.keys(count).sort((a, b) => count[b] - count[a] || a.localeCompare(b, "nb"));
 }
-function filtered() { return filter ? entries.filter((e) => (e.ovelser || []).some((o) => o && o.navn === filter && o.sett)) : entries; }
+function filtered() {
+  if (!filter) return entries;
+  if (filter === "Løping") return entries.filter((e) => e.okt === "loping");
+  return entries.filter((e) => (e.ovelser || []).some((o) => o && o.navn === filter && o.sett));
+}
 function renderTiles() {
   const tiles = $("tiles"); tiles.textContent = "";
   const month = todayISO().slice(0, 7), start = new Date(); start.setDate(start.getDate() - weekIdx(start));
@@ -818,7 +893,8 @@ function renderTiles() {
 }
 function renderFilter() {
   const box = $("filter-chips"); box.textContent = "";
-  const names = exerciseNames(); if (filter && !names.includes(filter)) filter = "";
+  const names = exerciseNames(); if (entries.some((e) => e.okt === "loping")) names.unshift("Løping");
+  if (filter && !names.includes(filter)) filter = "";
   [""].concat(names).forEach((n) => {
     const b = el("button", "fchip", n || "Alle"); b.type = "button"; b.setAttribute("aria-pressed", n === filter ? "true" : "false");
     b.addEventListener("click", () => { filter = n; renderFilter(); renderEntries(); }); box.appendChild(b);
@@ -841,8 +917,12 @@ function renderEntries() {
     const ed = el("button", "btn-ghost", "Rediger"); ed.type = "button"; ed.setAttribute("aria-label", "Rediger " + entryTitle(e) + " " + fmtDate(e.date));
     ed.addEventListener("click", () => startEdit(e));
     head.appendChild(ed); head.appendChild(del); card.appendChild(head);
-    const ov = (e.ovelser || []).filter((o) => o && o.sett && (!filter || o.navn === filter));
-    if (ov.length) {
+    const ov = (e.ovelser || []).filter((o) => o && o.sett && (!filter || filter === "Løping" || o.navn === filter));
+    if (e.okt === "loping") {
+      const d = lopData(e), g = el("div", "lopgrid");
+      [[d.tid, "tid"], [d.km, "distanse"], [d.tempo.replace(" min/km", ""), "min/km"]].forEach((x) => { const c = el("div"); c.appendChild(el("b", null, x[0] || "–")); c.appendChild(el("span", null, x[1])); g.appendChild(c); });
+      card.appendChild(g);
+    } else if (ov.length) {
       const ul = el("ul");
       ov.forEach((o) => { const li = el("li"); li.appendChild(el("span", null, o.navn + ": ")); li.appendChild(document.createTextNode(o.sett)); ul.appendChild(li); });
       card.appendChild(ul);
@@ -865,7 +945,8 @@ function q(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"
 function csvLine(arr) { return arr.map(q).join(";"); }
 function flat(s) { return String(s || "").replace(/\r\n?/g, "\n"); }
 /* Øvelsesbiblioteket lagres som egne linjer i filen, med Økt = BIBLIOTEK */
-function libRows(ts) { ts = ts || new Date().toISOString(); const d = ts.slice(0, 10); return lib.length ? lib.map((n) => ["BIBLIOTEK", d, "BIBLIOTEK", "", "", n, "", "", ts]) : [["BIBLIOTEK", d, "BIBLIOTEK", "", "", "", "", "", ts]]; }
+/* Hele biblioteket skrives som én linje, med øvelsene skilt med « | » */
+function libRows(ts) { ts = ts || new Date().toISOString(); return [["BIBLIOTEK", ts.slice(0, 10), "BIBLIOTEK", "", "", lib.join(" | "), "", "", ts]]; }
 let libUnsent = false;
 function entryRows(e) {
   const ov = (e.ovelser || []).filter((o) => o && o.sett);
@@ -992,10 +1073,10 @@ async function shareFile(blob, filename, type, statusEl) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
   say(statusEl, "Filen er lastet ned.");
 }
-function allRowsAsc() {
+function allRowsAsc(withLib) {
   const rows = [];
   entries.slice().sort((a, b) => a.date !== b.date ? (a.date < b.date ? -1 : 1) : (a.opprettet < b.opprettet ? -1 : 1)).forEach((e) => entryRows(e).forEach((r) => rows.push(r)));
-  libRows().forEach((r) => rows.push(r));
+  if (withLib) libRows().forEach((r) => rows.push(r));
   return rows;
 }
 async function exportXlsx(statusEl) {
@@ -1003,15 +1084,18 @@ async function exportXlsx(statusEl) {
   say(statusEl, "Lager Excel-fil …");
   try { await loadScript(XLSX_URL); }
   catch (e) { say(statusEl, "Excel trenger nett for å lastes. Prøv CSV, som virker uten nett."); return; }
-  const ws = XLSX.utils.aoa_to_sheet([CSV_HEAD].concat(allRowsAsc()));
+  /* Ark 1: bare gjeldende økter. Ark 2: øvelsesbiblioteket, én øvelse per rad. Alt lagres som tekst. */
+  const ws = XLSX.utils.aoa_to_sheet([CSV_HEAD].concat(allRowsAsc(false)));
   ws["!cols"] = [{ wch: 12 }, { wch: 11 }, { wch: 9 }, { wch: 22 }, { wch: 14 }, { wch: 28 }, { wch: 34 }, { wch: 50 }, { wch: 22 }];
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Treningslogg");
+  const wsLib = XLSX.utils.aoa_to_sheet([["Øvelse"]].concat(lib.map((n) => [n])));
+  wsLib["!cols"] = [{ wch: 32 }];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Treningslogg"); XLSX.utils.book_append_sheet(wb, wsLib, "Bibliotek");
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   await shareFile(new Blob([out], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "Treningslogg " + todayISO() + ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", statusEl);
 }
 async function exportCsv(statusEl) {
   if (!entries.length) { say(statusEl, "Ingen økter å eksportere."); return; }
-  const text = "﻿" + [csvLine(CSV_HEAD)].concat(allRowsAsc().map(csvLine)).join("\r\n");
+  const text = "﻿" + [csvLine(CSV_HEAD)].concat(allRowsAsc(true).map(csvLine)).join("\r\n");
   await shareFile(new Blob([text], { type: "text/csv" }), "Treningslogg.csv", "text/csv", statusEl);
 }
 $("exp-xlsx").addEventListener("click", () => exportXlsx($("exp-status")));
@@ -1097,6 +1181,11 @@ async function importFile(file) {
     try { await loadScript(XLSX_URL); } catch (e) { throw { userMsg: "Excel-filer trenger nett for å leses. Prøv igjen med nett, eller bruk CSV." }; }
     const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
     rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: false, defval: "" });
+    const libName = wb.SheetNames.find((n) => n.toLowerCase() === "bibliotek");
+    if (libName) {
+      const names = XLSX.utils.sheet_to_json(wb.Sheets[libName], { header: 1, raw: false, defval: "" }).slice(1).map((r) => String(r[0] || "").trim()).filter(Boolean);
+      if (names.length) { const ts = new Date().toISOString(); rows.push(["BIBLIOTEK", ts.slice(0, 10), "BIBLIOTEK", "", "", names.join(" | "), "", "", ts]); }
+    }
   } else rows = rowsFromText(await file.text());
   return importRows(rows);
 }
@@ -1113,7 +1202,7 @@ async function importRows(rows) {
     const id = get(r, "id"), oktName = get(r, "økt");
     if (id.startsWith("#")) return;
     if (get(r, "dato").toLowerCase() === "dato") return;
-    if (oktName === "BIBLIOTEK") { const ts = get(r, "lagret"); if (!libSnaps[ts]) libSnaps[ts] = []; const n = get(r, "øvelse"); if (n) libSnaps[ts].push(n); return; }
+    if (oktName === "BIBLIOTEK") { const ts = get(r, "lagret"); if (!libSnaps[ts]) libSnaps[ts] = []; get(r, "øvelse").split("|").map((x) => x.trim()).filter(Boolean).forEach((n) => libSnaps[ts].push(n)); return; }
     if (oktName === "SLETTET") { if (id) deleted.add(id); return; }
     const date = normDate(get(r, "dato")); if (!date) return;
     let key;
@@ -1154,7 +1243,7 @@ async function importRows(rows) {
   }
   const libMsg = libAdded ? " " + plural(libAdded, "øvelse", "øvelser") + " lagt til i biblioteket." : "";
   if (fresh.length) {
-    await dbPut(fresh); entries = entries.concat(fresh); sortEntries(); renderAll(); requestPersist();
+    await dbPut(fresh); entries = entries.concat(fresh); sortEntries(); await migrateCardio(); renderAll(); requestPersist();
     if (ghOn()) { await markDirty(); syncNow().catch(() => {}); }
   }
   if (!fresh.length) return (groups.size ? "Ingen nye økter. Alle " + plural(skipped, "økt", "økter") + " i filen finnes allerede i appen." : "Fant ingen økter i filen.") + libMsg;
@@ -1398,6 +1487,32 @@ $("gh-disc").addEventListener("click", () => {
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && ghOn()) syncNow().catch(() => {}); });
 window.addEventListener("online", () => { if (ghOn()) syncNow().catch(() => {}); });
 
+/* ---------- Gjør gamle cardio-økter om til Løping ---------- */
+async function migrateCardio() {
+  const old = entries.filter((e) => e.okt === "cardio"); if (!old.length) return 0;
+  const add = [], now = new Date().toISOString();
+  for (const e of old) {
+    const g = (n) => ((e.ovelser || []).find((o) => o && o.navn === n) || {}).sett || "";
+    const akt = g("Aktivitet"), td = g("Tid eller distanse");
+    const m = td.match(/(\d{1,2}(?::\d{2}){1,2})\s*\/\s*(\d+(?:[.,]\d+)?)/);
+    const sec = m ? parseTid(m[1]) : null, km = m ? parseKm(m[2]) : null;
+    const fix = LOP_FIX[e.id];
+    const ute = fix ? fix.ute : !/inne|tredem|indoor|mølle/i.test(akt + " " + (e.notat || ""));
+    const ov = sec && km ? [{ navn: "Tid", sett: fmtTid(sec) }, { navn: "Distanse", sett: fmtKm(km) }, { navn: "Tempo", sett: tempoTxt(sec, km) }] : [];
+    const base = fix ? fix.notat : [akt, e.notat].filter(Boolean).join(". ");
+    const n = { id: uid(), date: e.date, okt: "loping", tittel: ute ? "Ute" : "Inne", ovelser: ov, notat: (ov.length ? base : [base, td].filter(Boolean).join(" · ")).slice(0, 2000), opprettet: e.opprettet || now, iFil: false };
+    if (e.sted) n.sted = e.sted;
+    add.push(n);
+    await dbDel(e.id);
+    if (e.iFil) pendingDel.push({ id: e.id, date: e.date });
+    ghDel.push({ id: e.id, tid: now });
+  }
+  await dbPut(add); await kvSet("slettKo", pendingDel); await kvSet("ghSlett", ghDel);
+  entries = entries.filter((e) => e.okt !== "cardio").concat(add); sortEntries();
+  if (ghOn()) { await markDirty(); syncNow().catch(() => {}); }
+  return old.length;
+}
+
 /* ---------- Oppstart ---------- */
 function renderAll() { renderLib(); renderProgram(); renderTiles(); renderFilter(); renderEntries(); renderBackup(); renderStoreInfo(); if (!exBox.contains(document.activeElement)) renderFields(); }
 
@@ -1419,6 +1534,8 @@ fSave.disabled = true;
     pendingDel = Array.isArray(d) ? d : []; headerSent = !!h; lastSent = s || "";
     ready = true; fSave.disabled = false;
     renderAll(); renderLib();
+    const mig = await migrateCardio();
+    if (mig) { renderAll(); say(histStatus, plural(mig, "cardio-økt", "cardio-økter") + " er gjort om til Løping. Trykk «Send til fil» for å oppdatere iCloud-filen."); }
     draftOn = true;
     if (restoreDraft()) { renderLib(); }
     if (entries.length) requestPersist();
