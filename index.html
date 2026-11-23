@@ -249,6 +249,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
     <p class="status" id="lib-status" role="status"></p>
   </form>
   <div class="card glass"><span class="small" id="lib-count" style="font-weight:600">I biblioteket</span><div id="lib-list" class="chips"></div></div>
+  <div class="card glass" id="lib-fromlog-card" hidden>
+    <span class="small" style="font-weight:600">Brukt i loggen, men ikke i biblioteket</span>
+    <div id="lib-fromlog" class="chips"></div>
+    <button type="button" class="btn-soft" id="lib-fromlog-all" style="justify-self:start">Legg til alle</button>
+  </div>
   <div class="card glass"><span class="small" style="font-weight:600">Forslag, trykk for å legge til</span><div id="lib-suggest" class="chips"></div></div>
 </section>
 
@@ -748,6 +753,8 @@ $("f-cancel").addEventListener("click", () => { resetForm(); say(fStatus, "Redig
 
 form.addEventListener("submit", async (ev) => {
   ev.preventDefault();
+  /* Lagre bare når selve «Lagre økt»-knappen er trykket, aldri fra tastaturet */
+  if (ev.submitter !== fSave) { saveDraft(); return; }
   if (!ready || saving) return;
   if (!fDate.value) { say(fStatus, "Velg en dato."); return; }
   const ovelser = [], isAnnet = fOkt.value === "annet";
@@ -1166,6 +1173,14 @@ function renderLib() {
     b.addEventListener("click", () => writeLib(lib.filter((x) => x !== n), n + " er fjernet."));
     c.appendChild(b); box.appendChild(c);
   });
+  /* Øvelser fra «Annet»-økter i loggen som ikke er i biblioteket */
+  const fl = $("lib-fromlog"); fl.textContent = "";
+  const missing = logNamesMissing();
+  $("lib-fromlog-card").hidden = !missing.length;
+  missing.forEach((n) => {
+    const b = el("button", "chip suggest", "+ " + n); b.type = "button";
+    b.addEventListener("click", () => addToLib(n)); fl.appendChild(b);
+  });
   const sug = $("lib-suggest"); sug.textContent = "";
   const lower = lib.map((x) => x.toLowerCase());
   SUGGEST.forEach((n) => {
@@ -1183,6 +1198,22 @@ async function writeLib(next, msg) {
   }
   catch (e) { say(libStatus, "Kunne ikke lagre biblioteket. Prøv igjen."); }
 }
+function logNamesMissing() {
+  const lower = new Set(lib.map((x) => x.toLowerCase())), seen = new Set(), out = [];
+  entries.forEach((e) => {
+    if (e.okt !== "annet") return;
+    (e.ovelser || []).forEach((o) => {
+      const n = o && String(o.navn || "").trim(); if (!n) return;
+      const k = n.toLowerCase(); if (lower.has(k) || seen.has(k)) return;
+      seen.add(k); out.push(n);
+    });
+  });
+  return out.sort((a, b) => a.localeCompare(b, "nb"));
+}
+$("lib-fromlog-all").addEventListener("click", () => {
+  const add = logNamesMissing(); if (!add.length) return;
+  writeLib(lib.concat(add).sort((a, b) => a.localeCompare(b, "nb")), plural(add.length, "øvelse", "øvelser") + " lagt til fra loggen.");
+});
 function addToLib(name) {
   const n = String(name || "").trim().replace(/\s+/g, " ").slice(0, 60);
   if (!n) { say(libStatus, "Skriv inn et navn."); return; }
@@ -1368,7 +1399,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 window.addEventListener("online", () => { if (ghOn()) syncNow().catch(() => {}); });
 
 /* ---------- Oppstart ---------- */
-function renderAll() { renderProgram(); renderTiles(); renderFilter(); renderEntries(); renderBackup(); renderStoreInfo(); if (!exBox.contains(document.activeElement)) renderFields(); }
+function renderAll() { renderLib(); renderProgram(); renderTiles(); renderFilter(); renderEntries(); renderBackup(); renderStoreInfo(); if (!exBox.contains(document.activeElement)) renderFields(); }
 
 const standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
 $("safari-banner").hidden = standalone;
