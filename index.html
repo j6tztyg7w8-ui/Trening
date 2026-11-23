@@ -594,9 +594,7 @@ function renderProgram() {
       });
       if (key === "bein") body.appendChild(el("p", "note", "Mandager dekker Performance Strength beina. Bruk denne hvis du trener bein på egen hånd."));
     }
-    const go = el("button", "btn", "Logg " + p.navn); go.type = "button"; go.style.marginTop = "6px";
-    go.addEventListener("click", () => { fOkt.value = key; oktTouched = true; exBox.textContent = ""; renderFields(); goTab("logg"); });
-    body.appendChild(go); d.appendChild(body); box.appendChild(d);
+    d.appendChild(body); box.appendChild(d);
   });
 }
 
